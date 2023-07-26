@@ -1,0 +1,6 @@
+! Number of sections with same Strickler parameters
+1
+! Number of parameters (2 for K(h))
+2
+! xstart ystart xend yend alpha beta
+0.0 0.0 300.0 0.0 20.0 0.0

@@ -1,0 +1,640 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+DassFlow1D - Plan de développement
+\end_layout
+
+\begin_layout Section
+Suivi de version
+\end_layout
+
+\begin_layout Subsection
+Organisation de la base SVN
+\end_layout
+
+\begin_layout Standard
+Etant donné que le nombre de développeurs est important (au moins 4), les
+ modifications au sein du code risque d'aboutir à des situations de non
+ stabilité.
+ Or il est important de conserver une branche stable, notamment pour des
+ échanges avec d'autre équipes scientifiques (JPL notamment).
+ Il a donc été décidé de mettre en place le schéma suivant:
+\end_layout
+
+\begin_layout Itemize
+branche trunk : branche principale dite recherche.
+ Cette branche a pour vocation de centraliser les développements sur la
+ méthode d'assimilation seulement ainsi que de permettre la fusion avec
+ les branches de développements propres avant bascule sur la branche stable.
+\end_layout
+
+\begin_layout Itemize
+branches de développements : ces branches propres à chaque développeur (ou
+ sous-projet de développement) sont autonomes.
+ Il conviendra toutefois de bien effectuer des fusions avec la branche trunk
+ à intervalles réguliers pour ne pas aboutir à des conflits trop importants
+ lors des fusions vers le trunk.
+\end_layout
+
+\begin_layout Itemize
+branche stable : cette branche contient les sources du code diffusables.
+ La fusion des développements se fait depuis le trunk, une fois les sources
+ du trunk validés au moyen des cas de non-régressions (voir ci-dessous).
+\end_layout
+
+\begin_layout Standard
+Nous insistons fortement sur des fusions régulières afin de minimiser les
+ conflits lors de celles-ci.
+\end_layout
+
+\begin_layout Subsection
+Cas-tests de non-regressions
+\end_layout
+
+\begin_layout Standard
+Une liste de cas-tests de non régression doit être mise en place ainsi qu'une
+ méthode permettant de tout ou partie de ces cas-tests de manière simple
+ à chaque fusion d'une branche vers le trunk et (surtout !) avant fusion
+ du trunk vers la branche stable.
+ Des outils permettant d'organiser les cas-test par catégorie et ainsi de
+ lancer des sous-ensembles de cas-tests existent pour le code PLATHYNES.
+ Il est donc envisagé d'adapter ces outils pour DassFlow1D.
+\end_layout
+
+\begin_layout Standard
+La liste des cas-tests retenus est la suivante (avec la liste des parties
+ du code testées) :
+\end_layout
+
+\begin_layout Itemize
+channel_direct
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+schéma HLL
+\end_layout
+
+\begin_layout Itemize
+run direct
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+channel_adjoint
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+schéma HLL
+\end_layout
+
+\begin_layout Itemize
+adjoint
+\end_layout
+
+\begin_layout Itemize
+minimisation standard
+\end_layout
+
+\end_deeper
+\begin_layout Itemize
+channel_sinus_bathy
+\end_layout
+
+\begin_deeper
+\begin_layout Itemize
+schéma Preissmann
+\end_layout
+
+\begin_layout Itemize
+adjoint
+\end_layout
+
+\begin_layout Itemize
+minimisation triplet avec régularisation iterative
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+(KLR)
+\series default
+ autres cas à définir ? Quelle partie du code doit être testée ?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Implémentation en cours
+\end_layout
+
+\begin_layout Subsection
+Débits latéraux
+\end_layout
+
+\begin_layout Standard
+Travail déjà bien avancé par Léo+PAG avec schéma HLL, il est envisagé de
+ continuer ce travail sur le schéma de Preissmann.
+ Avant d'attaquer ceci, la nouvelle organisation de la base doit être mise
+ en place afin que Léo puisse travailler sur sa branche directement.
+ Afin de permettre ceci, Léo va fournir les sources qu'il a déjà modifiées.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+(KLR)
+\series default
+ Autres travaux en cours ?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Coefficient de Manning-Strickler composite et spatialisé
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Coefficient-de-Manning-Strickler"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Il est maintenant nécessaire de s'orienter vers un coefficient de Manning-Strick
+ler plus réaliste.
+ En effet la paramétrisation actuelle de ce coefficient dans DassFlow1D
+ n'est pas la plus adaptée, d'une part car elle est globale sur le segment
+ et d'autre part parce que la loi K(h) est peut réaliste pour le débordement.
+ Il est donc nécessaire de modifier le code pour calculer ce coefficient
+ de manière locale (et donc de disposer des valeurs locales dans le vecteur
+ de contrôle), mais également de définir une loi plus réaliste.
+ Pour ce dernier point, une étude bibliographique semble nécessaire.
+ Les pistes envisagées à l'heure actuelle sont :
+\end_layout
+
+\begin_layout Itemize
+Formule d'Einstein.
+ (cf.
+ Degoutte, these H.
+ Roux..)
+\begin_inset Formula 
+\[
+\frac{P}{K^{3/2}}=\Sigma\frac{P_{i}}{K_{i}^{3/2}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Formule de Debord.
+ 
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+cf.
+ papier Baume et Poirson, reseau maillé
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+Travaux de Didier Bousmar (UCL).
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+https://dial.uclouvain.be/pr/boreal/fr/object/boreal%3A4996/datastreams ;
+ 
+\end_layout
+
+\begin_layout Plain Layout
+these lyon : https://tel.archives-ouvertes.fr/tel-01409745
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Il convient de garder en tête que ces lois devront pouvoir être facilement
+ linéarisable pour le schéma implicite de Preissmann.
+\end_layout
+
+\begin_layout Section
+Implémentations futures
+\end_layout
+
+\begin_layout Subsection
+Fonctions de géométrie
+\end_layout
+
+\begin_layout Standard
+Les fonctions de géométrie implémentées à l'heure actuelle posent deux problèmes
+, la stabilité et la flexibilité.
+ En effet ces fonctions ont été implémentées en suivant le calcul explicite
+ sur la géométrie type SWOT (trapèzes).
+ Une solution envisagée est de créer des tableaux 
+\begin_inset Formula $S(Z_{k})$
+\end_inset
+
+, 
+\begin_inset Formula $W(Z_{k})$
+\end_inset
+
+, 
+\begin_inset Formula $P(Z_{k})$
+\end_inset
+
+ (plus variables dédiées aux différents schémas), avec interpolation linéaire
+ entre les 
+\begin_inset Formula $Z_{k}$
+\end_inset
+
+ (exemple : 
+\begin_inset Formula $S(Z_{k})=S(Z_{k-1})+\frac{Z-Z_{k-1}}{Z_{k}-Z_{k}}(S(Z_{k})-S(Z_{k-1})$
+\end_inset
+
+ pour 
+\begin_inset Formula $Z_{k-1}\leq Z<Z_{k}$
+\end_inset
+
+).
+ Ceci améliorerait grandement la stabilité (et la maintenance du code),
+ mais permettrait également une grande modularité des profils de sections.
+ Ainsi quelque soit le profil de section envisagé, il est possible de construire
+ les tableaux 
+\begin_inset Formula $S(Z_{k})$
+\end_inset
+
+, 
+\begin_inset Formula $W(Z_{k})$
+\end_inset
+
+, 
+\begin_inset Formula $P(Z_{k})$
+\end_inset
+
+ par prétraitement en début de lancement du solveur.
+\end_layout
+
+\begin_layout Subsection
+Modélisation en réseau
+\end_layout
+
+\begin_layout Standard
+La modélisation en réseau peut s'envisager de deux façons.
+ Soit en passant par une structure branche/segment qui va contenir les sections
+ en travers et les inconnues de chaque branche, soit en conservant la structure
+ actuelle (un tableau contenant toutes les sections du domaine et un tableau
+ contenant toutes les inconnues en chaque section) et en ajoutant une structure
+ de branche/segment qui ne contiendra que les indices des sections correspondant
+es.
+ La deuxième solution semble préférable pour deux raisons.
+ La première raison est que cette approche est plus adaptée à TAPENADE car
+ plus la profondeur des structures imbriquée est faible, plus la code adjoint
+ généré par TAPENADE est stable.
+ La seconde raison est que cette approche permettrait de développer le coefficie
+nt de Strickler spatialisé (voir 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:Coefficient-de-Manning-Strickler"
+
+\end_inset
+
+) sans avoir à attendre la création de la nouvelle structure.
+\end_layout
+
+\begin_layout Standard
+Mis à part cette modification de la structure du code, il convient de choisir
+ une méthode de résolution du système linéaire sparse pour le schéma de
+ Preissmann.
+ En effet, la résolution actuelle du système linéaire (méthode du double
+ balayage) ne fonctionne exclusivement que sur une simple branche (la matrice
+ est alors une matrice bande par blocs 2x2).
+ Dans le cas d'un réseau, la largeur de bande va varier au niveau des confluence
+s.
+ Plusieurs possibilités sont envisageables:
+\end_layout
+
+\begin_layout Itemize
+Utilisation de MUMPS.
+ Le solveur linéaire frontal de MUMPS est particulièrement adapté dans ce
+ cas, notamment en vue de la parallélisation (voir 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "subsec:Parallélisation-du-code"
+
+\end_inset
+
+).
+ Toutefois le problème du code adjoint se pose.
+ Il est en effet inconcevable de dériver le code adjoint de MUMPS à l'aide
+ de TAPENADE.
+ Une piste sérieuse serait d'utiliser MUMPS en solveur 
+\begin_inset Quotes eld
+\end_inset
+
+black-box
+\begin_inset Quotes erd
+\end_inset
+
+ de la manière dont Nathan et Jérôme l'ont fait pour un code de calcul de
+ glacio (voir thèse de Nathan Martin
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+https://tel.archives-ouvertes.fr/tel-00920189/document
+\end_layout
+
+\end_inset
+
+, annexe A).
+\end_layout
+
+\begin_layout Itemize
+Utilisation d'une méthode de pivot de Gauss sur structure 
+\begin_inset Quotes eld
+\end_inset
+
+skyline
+\begin_inset Quotes erd
+\end_inset
+
+.
+ C'est la méthode utilisée dans HEC-RAS (et il semblerait dans MGB également
+ 
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+(KLR)
+\series default
+ référence De Paiva, 2011
+\end_layout
+
+\end_inset
+
+).
+ La méthode serait à implémenter par nos soins.
+\end_layout
+
+\begin_layout Itemize
+Utilisation conjointe de la méthode de double balayage par branche avec
+ une méthode de pivot de Gauss globale.
+ Il est possible de compresser les relations de transfert de la méthode
+ du double balayage pour obtenir un système linéaire pour des inconnues
+ aux confluences seulement (voir Larnier 2010).
+ Ce système plus restreint peut être résolu aisément par une méthode de
+ pivot de Gauss.
+ Une fois ces inconnues aux confluences obtenues, la méthode du double balayage
+ est utilisée sur chaque branche pour calculer les inconnues en chaque section
+ interne.
+\end_layout
+
+\begin_layout Subsection
+Parallélisation du code
+\begin_inset CommandInset label
+LatexCommand label
+name "subsec:Parallélisation-du-code"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Du fait du nombre important de points de calcul pour des assimilations à
+ grande échelle (Amazonne, etc.), il serait envisagé de paralléliser le code
+ au moyen de la bibliothèque MPI.
+ Plusieurs points de difficulter sont à noter:
+\end_layout
+
+\begin_layout Itemize
+Découpage du maillage pour équilibrer la charge, ce qui impacterait fortement
+ les boucles de calcul pour les schémas.
+\end_layout
+
+\begin_layout Itemize
+Parallélisation du solveur linéaire.
+ Excepté pour le cas de MUMPS, qui est déjà parallèle.
+\end_layout
+
+\begin_layout Itemize
+Code adjoint parallèle.
+ Les routines MPI doivent également disposer de leur code adjoint respectif.
+ Il conviendra soit de suivre ce qui a été implémenté dans DassFlow2D, soit
+ d'évaluer les routines MPI adjointes nouvellement fournies avec TAPENADE.
+\end_layout
+
+\begin_layout Standard
+Au vu du travail important d'implémentation/validation, il serait bon d'estimer
+ en amont la charge de calcul en séquentiel pour de la grande échelle.
+\end_layout
+
+\begin_layout Subsection
+Modèle à casiers
+\end_layout
+
+\begin_layout Standard
+Pour certaines zones d'études, un coefficient de Manning-Strickler composite
+ pourrait ne pas être suffisant.
+ En effet il existe des zones avec une part importante de l'écoulement qui
+ transite par la plaine de débordement et ne participe quasiment plus à
+ l'écoulement.
+ Une approche classique de modélisation de ce phénomène avec des codes 1D
+ est la modélisation par casiers.
+ Un bon exemple est le modèle MASCARET et son application sur la Garonne
+ aval.
+\end_layout
+
+\begin_layout Standard
+Il est donc envisagé d'étudier la pertinence de mettre en place un tel module
+ dans DassFlow1D.
+ Des lois simples comme des lois de déversoirs peuvent être implémentés
+ (avec linéarisation de ces lois pour le schéma implicite de Preissmann).
+\end_layout
+
+\begin_layout Subsection
+Couplage modèles
+\end_layout
+
+\begin_layout Standard
+Enfin, il est envisagé, notamment pour la thèse de Léo de coupler plusieurs
+ modèles.
+ Plusieurs couplage sont envisagés:
+\end_layout
+
+\begin_layout Itemize
+Couplage DassFlow1D-DassFlow2D 
+\begin_inset Quotes eld
+\end_inset
+
+en long
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+Couplage DassFlow1D-DassFlow2D 
+\begin_inset Quotes eld
+\end_inset
+
+emboîtés
+\begin_inset Quotes erd
+\end_inset
+
+ (voir Monnier, Gejadze 2007
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+https://hal.inria.fr/inria-00256578/document
+\end_layout
+
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Itemize
+Couplage DassFlow1D-DassFlow2D 
+\begin_inset Quotes eld
+\end_inset
+
+transverse
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+Couplage avec un modèle d'hydrogéol.
+\end_layout
+
+\begin_layout Section
+Divers
+\end_layout
+
+\begin_layout Subsection
+Doxygen
+\end_layout
+
+\begin_layout Standard
+La mise en place de la génération automatique de la documentation devéloppeur
+ au moyen de Doxygen est envisagée.
+ Les balises Doxygen dans le code source sont déjà mise en place, il ne
+ reste donc qu'à créer le fichier de paramètrage pour Doxygen et mettre
+ en place une règle de génération dans le Makefile.
+ A très court terme, Kevin s'engage à effectuer ceci afin d'obtenir à minima
+ l'arbre d'appel des différentes routines du code.
+ Dans un second temps, il conviendra de corriger les éventuelles erreurs
+ dans les balises de sources.
+\end_layout
+
+\end_body
+\end_document

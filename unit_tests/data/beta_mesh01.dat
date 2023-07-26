@@ -1,0 +1,17 @@
+DASSFLOW-1D SPATIAL FIELD V1.00
+# Alpha for K=alpha*h^beta
+CS linear
+# SEGMENT 1
+0.001
+0.001
+0.001
+0.001
+0.001
+0.001
+0.001
+0.001
+0.001
+0.001
+0.001
+0.001
+0.001
