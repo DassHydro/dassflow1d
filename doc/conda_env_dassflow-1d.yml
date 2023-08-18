@@ -1,0 +1,9 @@
+name: dassflow-1d
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.6
+  - f90wrap==0.1.4
+  - matplotlib==3.1.3
+
