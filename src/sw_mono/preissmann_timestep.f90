@@ -338,6 +338,10 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
 ! #ifndef CPP_ADJ
 !                 print *, "[ SIMULATION FAILED ] Debord operand is negative"
 ! #endif
+                open(199, file="error.txt")
+                write(199, '(2(A,I6))') "Negative Debord operand detected on segment ", iseg-1, ", cross-section ", ics
+                close(199)
+
                 status = 22
                 return
             end if
@@ -481,6 +485,9 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
 ! #ifndef CPP_ADJ
 !                     print *, "[ SIMULATION FAILED ] Debord operand is negative"
 ! #endif
+                    open(199, file="error.txt")
+                    write(199, '(2(A,I6))') "Negative Debord operand detected on segment ", iseg-1, ", cross-section ", ie+1
+                    close(199)
                     status = 22
                     return
                 end if
@@ -551,6 +558,10 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
             read(*,*)
 #endif
             status = 20
+            open(199, file="error.txt")
+            write(199, '(3(A,I6))') "NaN internal variable detected on segment ", iseg-1, ", cross-sections ", ie, &
+                                    " and ", ie+1
+            close(199)
             return
         end if
 #endif
@@ -1343,6 +1354,10 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
 !             print *, "[ SIMULATION FAILED ] NaN depth or discharge"
 #endif
             status = 21
+            open(199, file="error.txt")
+            write(199, '(2(A,I6))') "NaN dof detected on segment ", iseg-1, ", cross-section ", ics
+            close(199)
+
 #ifdef DEBUG_L1
             print *, "NAN,", ics, ", h=", dof%h(ics), ", q=", dof%q(ics), DZ(ics), DQ(ics)
             read(*,*)
@@ -1380,6 +1395,10 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
 !                 print *, "[ SIMULATION FAILED ] NaN depth or discharge"
 ! #endif
                 status = 21
+                open(199, file="error.txt")
+                write(199, '(2(A,I6))') "NaN dof detected on segment ", iseg-1, ", cross-section ", ics
+                close(199)
+
 #ifdef DEBUG_L1
                 print *, "NAN,", ics, ", h=", dof%h(ics), ", q=", dof%q(ics), DZ(ics), DQ(ics)
                 read(*,*)

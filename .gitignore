@@ -1,0 +1,5 @@
+*.o
+build/api/*
+*.mod
+*.a
+libs/*

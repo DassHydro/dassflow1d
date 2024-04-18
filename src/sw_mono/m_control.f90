@@ -1435,43 +1435,68 @@ module m_control
     end subroutine
 
 
-    function temporal_correlation_matrix(ctrl, t, mu) result(mat)
+    ! function temporal_correlation_matrix(ctrl, t, mu) result(mat)
+    !     implicit none
+    !     type(Control), intent(in) :: ctrl
+    !     real(rp), dimension(:), intent(in) :: t
+    !     real(rp), intent(in) :: mu
+    !     type(Matrix) :: mat
+    !     ! Index of downstream cross-section
+    !     integer(ip) :: ds_cs
+    !     ! Iterators on times
+    !     integer(ip) :: it1, it2
+    !     ! Iterator on segments
+    !     integer(ip) :: iseg
+    !     ! Number of data (non ghost cross-sections)
+    !     integer(ip) :: ndata
+    !     ! Index of upstream cross-section
+    !     integer(ip) :: us_cs
+    !     ! Spatial indices (indices of non ghost cross-sections)
+    !     integer(ip), dimension(:), allocatable :: spatial_index
+    !     ! Spacing
+    !     real(rp) :: dx
+    !     ! Correlation value
+    !     real(rp) :: corr
+        
+    !     allocate(mat%m(size(t), size(t)))
+    !     mat%m(:, :) = 0.0_rp
+        
+    !     ! Compute correlations
+    !     do it1 = 1, size(t)
+    !         do it2 = it1, size(t)
+    !             dt = t(it2) - t(it1)
+    !             corr = exp(-abs(dt) / mu) ! exp kernel
+    !             mat%m(it1, it2) = corr
+    !             mat%m(it2, it1) = corr
+    !         end do
+    !     end do
+        
+    ! end function
+
+
+    subroutine temporal_correlation_array_fixed(ctrl, t, mu, n, m, array)
         implicit none
         type(Control), intent(in) :: ctrl
         real(rp), dimension(:), intent(in) :: t
         real(rp), intent(in) :: mu
-        type(Matrix) :: mat
-        ! Index of downstream cross-section
-        integer(ip) :: ds_cs
+        integer(ip), intent(in) :: n, m
+        real(rp), dimension(n, m) :: array
         ! Iterators on times
         integer(ip) :: it1, it2
-        ! Iterator on segments
-        integer(ip) :: iseg
-        ! Number of data (non ghost cross-sections)
-        integer(ip) :: ndata
-        ! Index of upstream cross-section
-        integer(ip) :: us_cs
-        ! Spatial indices (indices of non ghost cross-sections)
-        integer(ip), dimension(:), allocatable :: spatial_index
-        ! Spacing
-        real(rp) :: dx
         ! Correlation value
         real(rp) :: corr
-        
-        allocate(mat%m(size(t), size(t)))
-        mat%m(:, :) = 0.0_rp
         
         ! Compute correlations
         do it1 = 1, size(t)
             do it2 = it1, size(t)
                 dt = t(it2) - t(it1)
                 corr = exp(-abs(dt) / mu) ! exp kernel
-                mat%m(it1, it2) = corr
-                mat%m(it2, it1) = corr
+                array(it1, it2) = corr
+                array(it2, it1) = corr
             end do
         end do
         
-    end function
+    end subroutine
 
 
 
@@ -1598,8 +1623,81 @@ module m_control
 ! ! !     end function
 
 
-    ! BACKWARD COMPATIBILITY
-    function spatial_correlation_matrix(ctrl, msh, mu) result(mat)
+!     ! BACKWARD COMPATIBILITY
+!     function spatial_correlation_matrix(ctrl, msh, mu) result(mat)
+!         implicit none
+! !         import mesh_correlation_matrix
+! !         interface
+! !             function mesh_correlation_matrix(ctrl, msh, mu) result(mat)
+! !                 import Control
+! !                 import Mesh
+! !                 import rp
+! !                 import Matrix
+! !                 implicit none
+! !                 type(Control), intent(in) :: ctrl
+! !                 type(Mesh), intent(in) :: msh
+! !                 real(rp), intent(in) :: mu
+! !                 type(Matrix) :: mat
+! !             end function
+! !         end interface
+!         type(Control), intent(in) :: ctrl
+!         type(Mesh), intent(in) :: msh
+!         real(rp), intent(in) :: mu
+!         type(Matrix) :: mat
+!         integer :: i
+
+
+!         mat = mesh_correlation_matrix(ctrl, msh, mu)
+
+
+!         do i = 1, size(mat%m, 1)
+!             mat%m(i, i) = i * real(1.0, 8)
+!             print '(100(E9.2,1X))', mat%m(i, :)
+!         end do
+
+!         print *, "LOC=", loc(mat%m)
+
+!     end function
+
+    function get_spatial_correlation_array_size(ctrl, msh) result(size)
+        implicit none
+!         import mesh_correlation_matrix
+!         interface
+!             function mesh_correlation_matrix(ctrl, msh, mu) result(mat)
+!                 import Control
+!                 import Mesh
+!                 import rp
+!                 import Matrix
+!                 implicit none
+!                 type(Control), intent(in) :: ctrl
+!                 type(Mesh), intent(in) :: msh
+!                 real(rp), intent(in) :: mu
+!                 type(Matrix) :: mat
+!             end function
+!         end interface
+        type(Control), intent(in) :: ctrl
+        type(Mesh), intent(in) :: msh
+        integer(ip) :: size
+        ! Iterators on cross-sections
+        integer(ip) :: ics
+        ! Iterator on segments
+        integer(ip) :: iseg
+
+        size = 0
+        do iseg = 1, msh%nseg
+            do ics = msh%seg(iseg)%first_cs, msh%seg(iseg)%last_cs
+!                 TODO how to have only base sections in control ? Probleme => linear interpolation at resample css ?
+!                 if (msh%cs(ics)%ibase > 0) then
+!                     ndata = ndata + 1
+!                     spatial_index(ics) = ndata
+!                 end if
+                size = size + 1
+            end do
+        end do
+
+    end function
+
+    subroutine spatial_correlation_array_fixed(ctrl, msh, mu, n, m, array)
         implicit none
 !         import mesh_correlation_matrix
 !         interface
@@ -1618,16 +1716,8 @@ module m_control
         type(Control), intent(in) :: ctrl
         type(Mesh), intent(in) :: msh
         real(rp), intent(in) :: mu
-        type(Matrix) :: mat
-        mat = mesh_correlation_matrix(ctrl, msh, mu)
-    end function
-
-    function mesh_correlation_matrix(ctrl, msh, mu) result(mat)
-        implicit none
-        type(Control), intent(in) :: ctrl
-        type(Mesh), intent(in) :: msh
-        real(rp), intent(in) :: mu
-        type(Matrix) :: mat
+        integer(ip), intent(in) :: n, m
+        real(rp), dimension(n, m), intent(out) :: array
         ! Index of downstream cross-section
         integer(ip) :: ds_cs
         ! Iterators on cross-sections
@@ -1645,7 +1735,7 @@ module m_control
         ! Correlation value
         real(rp) :: corr
         
-        allocate(spatial_index(size(msh%cs)))
+        allocate(spatial_index(msh%ncs))
         
         ! Compute spatial indices (indices of non ghost cross-sections)
         ndata = 0
@@ -1661,16 +1751,25 @@ module m_control
                 spatial_index(ics) = ndata
             end do
         end do
+
+        if (ndata /= n .or. ndata /= m) then
+            call f90wrap_abort("Wrong size for spatial_correlation_array_fixed")
+        end if
         
-        allocate(mat%m(ndata, ndata))
-        mat%m(:, :) = 0.0_rp
+        array(:, :) = 0.0_rp
         
         ! Set values on the diagonal
         do ics = 1, msh%ncs
             if (spatial_index(ics) > 0) then
-                mat%m(spatial_index(ics), spatial_index(ics)) = 1.0_rp
+                ! print *, ics, spatial_index(ics)
+                array(spatial_index(ics), spatial_index(ics)) = 1.0_rp
             end if
         end do
+
+        ! print *, "LOC", loc(array)
+        ! do ics = 1, ndata
+        !     print '(100(E9.2,1X))', array(ics, :)
+        ! end do
         
         ! Compute correlations in segments
         do iseg = 1, msh%nseg
@@ -1679,214 +1778,446 @@ module m_control
                     if (spatial_index(ics1) > 0 .and. spatial_index(ics2) > 0) then
                         dx = msh%cs(ics1)%x - msh%cs(ics2)%x
                         corr = exp(-abs(dx) / mu) ! exp kernel
-                        mat%m(spatial_index(ics1), spatial_index(ics2)) = corr
-                        mat%m(spatial_index(ics2), spatial_index(ics1)) = corr
+                        array(spatial_index(ics1), spatial_index(ics2)) = corr
+                        array(spatial_index(ics2), spatial_index(ics1)) = corr
                     end if
                 end do
-!                 if (abs(mat%m(ics, ics+1)) < 1e-99) mat%m(ics, ics+1) = 0.0_rp
-!                 mat%m(spatial_index(ics+1), spatial_index(ics)) = mat%m(spatial_index(ics), spatial_index(ics+1))
+!                 if (abs(array(ics, ics+1)) < 1e-99) array(ics, ics+1) = 0.0_rp
+!                 array(spatial_index(ics+1), spatial_index(ics)) = array(spatial_index(ics), spatial_index(ics+1))
             end do
         end do
         
         ! Compute correlations in junctions
-        do iseg = 1, msh%nseg
-            if (msh%seg(iseg)%ds_seg > 0) then
-                ds_cs = msh%seg(iseg)%last_cs
-                us_cs = msh%seg(msh%seg(iseg)%ds_seg)%first_cs
-                mat%m(spatial_index(ds_cs), spatial_index(us_cs)) = 1.0_rp
-                mat%m(spatial_index(us_cs), spatial_index(ds_cs)) = 1.0_rp
-            end if
-        end do
+!         do iseg = 1, msh%nseg
+!             if (msh%seg(iseg)%ds_seg > 0) then
+!                 ds_cs = msh%seg(iseg)%last_cs
+!                 us_cs = msh%seg(msh%seg(iseg)%ds_seg)%first_cs
+!                 array(spatial_index(ds_cs), spatial_index(us_cs)) = 1.0_rp
+!                 array(spatial_index(us_cs), spatial_index(ds_cs)) = -1.0_rp
+!             end if
+!         end do
         
         deallocate(spatial_index)
+
+    end subroutine
+
+!     function mesh_correlation_matrix(ctrl, msh, mu) result(mat)
+!         implicit none
+!         type(Control), intent(in) :: ctrl
+!         type(Mesh), intent(in) :: msh
+!         real(rp), intent(in) :: mu
+!         type(Matrix) :: mat
+!         ! Index of downstream cross-section
+!         integer(ip) :: ds_cs
+!         ! Iterators on cross-sections
+!         integer(ip) :: ics, ics1, ics2
+!         ! Iterator on segments
+!         integer(ip) :: iseg
+!         ! Number of data (non ghost cross-sections)
+!         integer(ip) :: ndata
+!         ! Index of upstream cross-section
+!         integer(ip) :: us_cs
+!         ! Spatial indices (indices of non ghost cross-sections)
+!         integer(ip), dimension(:), allocatable :: spatial_index
+!         ! Spacing
+!         real(rp) :: dx
+!         ! Correlation value
+!         real(rp) :: corr
         
-    end function
+!         allocate(spatial_index(size(msh%cs)))
+        
+!         ! Compute spatial indices (indices of non ghost cross-sections)
+!         ndata = 0
+!         spatial_index(:) = 0
+!         do iseg = 1, msh%nseg
+!             do ics = msh%seg(iseg)%first_cs, msh%seg(iseg)%last_cs
+! !                 TODO how to have only base sections in control ? Probleme => linear interpolation at resample css ?
+! !                 if (msh%cs(ics)%ibase > 0) then
+! !                     ndata = ndata + 1
+! !                     spatial_index(ics) = ndata
+! !                 end if
+!                 ndata = ndata + 1
+!                 spatial_index(ics) = ndata
+!             end do
+!         end do
+        
+!         allocate(mat%m(ndata, ndata))
+!         mat%m(:, :) = 0.0_rp
+        
+!         ! Set values on the diagonal
+!         do ics = 1, msh%ncs
+!             if (spatial_index(ics) > 0) then
+!                 print *, ics, spatial_index(ics)
+!                 mat%m(spatial_index(ics), spatial_index(ics)) = 1.0_rp
+!             end if
+!         end do
+
+!         do ics = 1, ndata
+!             print '(100(E9.2,1X))', mat%m(ics, :)
+!         end do
+        
+!         ! Compute correlations in segments
+! !         do iseg = 1, msh%nseg
+! !             do ics1 = msh%seg(iseg)%first_cs, msh%seg(iseg)%last_cs-1
+! !                 do ics2 = ics1+1, msh%seg(iseg)%last_cs-1
+! !                     if (spatial_index(ics1) > 0 .and. spatial_index(ics2) > 0) then
+! !                         dx = msh%cs(ics1)%x - msh%cs(ics2)%x
+! !                         corr = exp(-abs(dx) / mu) ! exp kernel
+! !                         mat%m(spatial_index(ics1), spatial_index(ics2)) = corr
+! !                         mat%m(spatial_index(ics2), spatial_index(ics1)) = corr
+! !                     end if
+! !                 end do
+! ! !                 if (abs(mat%m(ics, ics+1)) < 1e-99) mat%m(ics, ics+1) = 0.0_rp
+! ! !                 mat%m(spatial_index(ics+1), spatial_index(ics)) = mat%m(spatial_index(ics), spatial_index(ics+1))
+! !             end do
+! !         end do
+        
+!         ! Compute correlations in junctions
+! !         do iseg = 1, msh%nseg
+! !             if (msh%seg(iseg)%ds_seg > 0) then
+! !                 ds_cs = msh%seg(iseg)%last_cs
+! !                 us_cs = msh%seg(msh%seg(iseg)%ds_seg)%first_cs
+! !                 mat%m(spatial_index(ds_cs), spatial_index(us_cs)) = 1.0_rp
+! !                 mat%m(spatial_index(us_cs), spatial_index(ds_cs)) = -1.0_rp
+! !             end if
+! !         end do
+        
+!         deallocate(spatial_index)
+        
+!     end function
 
 
-    function field_correlation_matrix(ctrl, msh, field, mu) result(mat)
-        implicit none
-        type(Control), intent(in) :: ctrl
-        type(Mesh), intent(in) :: msh
-        character(len=*), intent(in) :: field
-        real(rp), intent(in) :: mu
-        type(Matrix) :: mat
-        ! Iterators on field points
-        integer(ip) :: i1, i2
-        ! Iterator on segments
-        integer(ip) :: iseg
-        ! Number of data (non ghost cross-sections)
-        integer(ip) :: ndata
-        ! Offset
-        integer(ip) :: offset
-        ! Spacing
-        real(rp) :: dx
-        ! Correlation value
-        real(rp) :: corr
+!     ! TODO correct and reactivate
+!     function field_correlation_matrix(ctrl, msh, field, mu) result(mat)
+!         implicit none
+!         type(Control), intent(in) :: ctrl
+!         type(Mesh), intent(in) :: msh
+!         character(len=*), intent(in) :: field
+!         real(rp), intent(in) :: mu
+!         type(Matrix) :: mat
+!         ! Iterators on field points
+!         integer(ip) :: i1, i2
+!         ! Iterator on segments
+!         integer(ip) :: iseg
+!         ! Number of data (non ghost cross-sections)
+!         integer(ip) :: ndata
+!         ! Offset
+!         integer(ip) :: offset
+!         ! Spacing
+!         real(rp) :: dx
+!         ! Correlation value
+!         real(rp) :: corr
         
-        ! Compute number of data
-        ndata = 0
-        do iseg = 1, msh%nseg
-            if (field == "K" .or. field == "alpha" .or. field == "KLOB") then
-                if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
-!                     call f90wrap_abort("strickler fields not activated")
-                    mat = mesh_correlation_matrix(ctrl, msh, mu)
-                    return 
-                end if
-                ndata = ndata + size(msh%seg(iseg)%strickler_fields(1)%x)
-            else if (field == "beta" .or. field == "KMC") then
-                if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
-!                     call f90wrap_abort("strickler fields not activated")
-                    mat = mesh_correlation_matrix(ctrl, msh, mu)
-                    return 
-                end if
-                ndata = ndata + size(msh%seg(iseg)%strickler_fields(2)%x)
-            else if (field == "KROB") then
-                if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
-!                     call f90wrap_abort("strickler fields not activated")
-                    mat = mesh_correlation_matrix(ctrl, msh, mu)
-                    return 
-                end if
-                ndata = ndata + size(msh%seg(iseg)%strickler_fields(3)%x)
-            else if (field == "bathy") then
-                if (.not. allocated(msh%seg(iseg)%bathy_field%x)) then
-!                     call f90wrap_abort("bathymetry field not activated")
-                    mat = mesh_correlation_matrix(ctrl, msh, mu)
-                    return 
-                end if
-                ndata = ndata + size(msh%seg(iseg)%bathy_field%x)
-            end if
-        end do
+!         ! Compute number of data
+!         ndata = 0
+!         do iseg = 1, msh%nseg
+!             if (field == "K" .or. field == "alpha" .or. field == "KLOB") then
+!                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+! !                     call f90wrap_abort("strickler fields not activated")
+!                     mat = mesh_correlation_matrix(ctrl, msh, mu)
+!                     return 
+!                 end if
+!                 ndata = ndata + size(msh%seg(iseg)%strickler_fields(1)%x)
+!             else if (field == "beta" .or. field == "KMC") then
+!                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+! !                     call f90wrap_abort("strickler fields not activated")
+!                     mat = mesh_correlation_matrix(ctrl, msh, mu)
+!                     return 
+!                 end if
+!                 ndata = ndata + size(msh%seg(iseg)%strickler_fields(2)%x)
+!             else if (field == "KROB") then
+!                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+! !                     call f90wrap_abort("strickler fields not activated")
+!                     mat = mesh_correlation_matrix(ctrl, msh, mu)
+!                     return 
+!                 end if
+!                 ndata = ndata + size(msh%seg(iseg)%strickler_fields(3)%x)
+!             else if (field == "bathy") then
+!                 if (.not. allocated(msh%seg(iseg)%bathy_field%x)) then
+! !                     call f90wrap_abort("bathymetry field not activated")
+!                     mat = mesh_correlation_matrix(ctrl, msh, mu)
+!                     return 
+!                 end if
+!                 ndata = ndata + size(msh%seg(iseg)%bathy_field%x)
+!             end if
+!         end do
         
-        allocate(mat%m(ndata, ndata))
-        mat%m(:, :) = 0.0_rp
+!         allocate(mat%m(ndata, ndata))
+!         mat%m(:, :) = 0.0_rp
         
-        ! Set values on the diagonal
-        do i1 = 1, ndata
-            mat%m(i1, i1) = 1.0_rp
-        end do
+!         ! Set values on the diagonal
+!         do i1 = 1, ndata
+!             mat%m(i1, i1) = 1.0_rp
+!         end do
         
-        ! Compute correlations in segments
-        offset = 0
-        do iseg = 1, msh%nseg
-            if (field == "K" .or. field == "alpha" .or. field == "KLOB") then
-                do i1 = 1, size(msh%seg(iseg)%strickler_fields(1)%x) - 1
-                    do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(1)%x)
-                        dx = msh%seg(iseg)%strickler_fields(1)%x(i1) - msh%seg(iseg)%strickler_fields(1)%x(i2)
-                        corr = exp(-abs(dx) / mu) ! exp kernel
-                        mat%m(offset+i1, offset+i2) = corr
-                        mat%m(offset+i2, offset+i1) = corr
-                    end do
-                end do
-                offset = offset + size(msh%seg(iseg)%strickler_fields(1)%x)
-            else if (field == "beta" .or. field == "KMC") then
-                do i1 = 1, size(msh%seg(iseg)%strickler_fields(2)%x) - 1
-                    do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(2)%x)
-                        dx = msh%seg(iseg)%strickler_fields(2)%x(i1) - msh%seg(iseg)%strickler_fields(2)%x(i2)
-                        corr = exp(-abs(dx) / mu) ! exp kernel
-                        mat%m(offset+i1, offset+i2) = corr
-                        mat%m(offset+i2, offset+i1) = corr
-                    end do
-                end do
-                offset = offset + size(msh%seg(iseg)%strickler_fields(2)%x)
-            else if (field == "KROB") then
-                do i1 = 1, size(msh%seg(iseg)%strickler_fields(3)%x) - 1
-                    do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(3)%x)
-                        dx = msh%seg(iseg)%strickler_fields(3)%x(i1) - msh%seg(iseg)%strickler_fields(1)%x(i2)
-                        corr = exp(-abs(dx) / mu) ! exp kernel
-                        mat%m(offset+i1, offset+i2) = corr
-                        mat%m(offset+i2, offset+i1) = corr
-                    end do
-                end do
-                offset = offset + size(msh%seg(iseg)%strickler_fields(3)%x)
-            else if (field == "bathy") then
-                do i1 = 1, size(msh%seg(iseg)%bathy_field%x) - 1
-                    do i2 = i1+1, size(msh%seg(iseg)%bathy_field%x)
-                        dx = msh%seg(iseg)%bathy_field%x(i1) - msh%seg(iseg)%bathy_field%x(i2)
-                        corr = exp(-abs(dx) / mu) ! exp kernel
-                        mat%m(offset+i1, offset+i2) = corr
-                        mat%m(offset+i2, offset+i1) = corr
-                    end do
-                end do
-                offset = offset + size(msh%seg(iseg)%bathy_field%x)
-            end if
-        end do
+!         ! Compute correlations in segments
+!         offset = 0
+!         do iseg = 1, msh%nseg
+!             if (field == "K" .or. field == "alpha" .or. field == "KLOB") then
+!                 do i1 = 1, size(msh%seg(iseg)%strickler_fields(1)%x) - 1
+!                     do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(1)%x)
+!                         dx = msh%seg(iseg)%strickler_fields(1)%x(i1) - msh%seg(iseg)%strickler_fields(1)%x(i2)
+!                         corr = exp(-abs(dx) / mu) ! exp kernel
+!                         mat%m(offset+i1, offset+i2) = corr
+!                         mat%m(offset+i2, offset+i1) = corr
+!                     end do
+!                 end do
+!                 offset = offset + size(msh%seg(iseg)%strickler_fields(1)%x)
+!             else if (field == "beta" .or. field == "KMC") then
+!                 do i1 = 1, size(msh%seg(iseg)%strickler_fields(2)%x) - 1
+!                     do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(2)%x)
+!                         dx = msh%seg(iseg)%strickler_fields(2)%x(i1) - msh%seg(iseg)%strickler_fields(2)%x(i2)
+!                         corr = exp(-abs(dx) / mu) ! exp kernel
+!                         mat%m(offset+i1, offset+i2) = corr
+!                         mat%m(offset+i2, offset+i1) = corr
+!                     end do
+!                 end do
+!                 offset = offset + size(msh%seg(iseg)%strickler_fields(2)%x)
+!             else if (field == "KROB") then
+!                 do i1 = 1, size(msh%seg(iseg)%strickler_fields(3)%x) - 1
+!                     do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(3)%x)
+!                         dx = msh%seg(iseg)%strickler_fields(3)%x(i1) - msh%seg(iseg)%strickler_fields(1)%x(i2)
+!                         corr = exp(-abs(dx) / mu) ! exp kernel
+!                         mat%m(offset+i1, offset+i2) = corr
+!                         mat%m(offset+i2, offset+i1) = corr
+!                     end do
+!                 end do
+!                 offset = offset + size(msh%seg(iseg)%strickler_fields(3)%x)
+!             else if (field == "bathy") then
+!                 do i1 = 1, size(msh%seg(iseg)%bathy_field%x) - 1
+!                     do i2 = i1+1, size(msh%seg(iseg)%bathy_field%x)
+!                         dx = msh%seg(iseg)%bathy_field%x(i1) - msh%seg(iseg)%bathy_field%x(i2)
+!                         corr = exp(-abs(dx) / mu) ! exp kernel
+!                         mat%m(offset+i1, offset+i2) = corr
+!                         mat%m(offset+i2, offset+i1) = corr
+!                     end do
+!                 end do
+!                 offset = offset + size(msh%seg(iseg)%bathy_field%x)
+!             end if
+!         end do
         
-    end function
+!     end function
+
+     function get_field_correlation_array_size(ctrl, msh, field) result(ndata)
+         implicit none
+         type(Control), intent(in) :: ctrl
+         type(Mesh), intent(in) :: msh
+         character(len=*), intent(in) :: field
+         integer(ip) :: ndata
+         ! Iterators on field points
+         integer(ip) :: i1, i2
+         ! Iterator on segments
+         integer(ip) :: iseg
+         ! Offset
+         integer(ip) :: offset
+         ! Spacing
+         real(rp) :: dx
+         ! Correlation value
+         real(rp) :: corr
+
+         ! Compute number of data
+         ndata = 0
+         do iseg = 1, msh%nseg
+             if (field == "K" .or. field == "alpha" .or. field == "KLOB") then
+                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+ !                     call f90wrap_abort("strickler fields not activated")
+                     ndata = get_spatial_correlation_array_size(ctrl, msh)
+                     return 
+                 end if
+                 ndata = ndata + size(msh%seg(iseg)%strickler_fields(1)%x)
+             else if (field == "beta" .or. field == "KMC") then
+                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+ !                     call f90wrap_abort("strickler fields not activated")
+                     ndata = get_spatial_correlation_array_size(ctrl, msh)
+                     return 
+                 end if
+                 ndata = ndata + size(msh%seg(iseg)%strickler_fields(2)%x)
+             else if (field == "KROB") then
+                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+ !                     call f90wrap_abort("strickler fields not activated")
+                     ndata = get_spatial_correlation_array_size(ctrl, msh)
+                     return 
+                 end if
+                 ndata = ndata + size(msh%seg(iseg)%strickler_fields(3)%x)
+             else if (field == "bathy") then
+                 if (.not. allocated(msh%seg(iseg)%bathy_field%x)) then
+ !                     call f90wrap_abort("bathymetry field not activated")
+                     ndata = get_spatial_correlation_array_size(ctrl, msh)
+                     return 
+                 end if
+                 ndata = ndata + size(msh%seg(iseg)%bathy_field%x)
+             end if
+         end do
+
+     end function
+
+     subroutine field_correlation_array_fixed(ctrl, msh, field, mu, n, m, array)
+         implicit none
+         type(Control), intent(in) :: ctrl
+         type(Mesh), intent(in) :: msh
+         character(len=*), intent(in) :: field
+         real(rp), intent(in) :: mu
+        integer(ip), intent(in) :: n, m
+        real(rp), dimension(n, m) :: array
+         ! Iterators on field points
+         integer(ip) :: i1, i2
+         ! Iterator on segments
+         integer(ip) :: iseg
+         ! Number of data (non ghost cross-sections)
+         integer(ip) :: ndata
+         ! Offset
+         integer(ip) :: offset
+         ! Spacing
+         real(rp) :: dx
+         ! Correlation value
+         real(rp) :: corr
+
+         array(:, :) = 0.0_rp
+        
+         ! Set values on the diagonal
+         do i1 = 1, ndata
+             array(i1, i1) = 1.0_rp
+         end do
+        
+         ! Compute correlations in segments
+         offset = 0
+         do iseg = 1, msh%nseg
+             if (field == "K" .or. field == "alpha" .or. field == "KLOB") then
+                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+                    call spatial_correlation_array_fixed(ctrl, msh, mu, n, m, array)
+                    return
+                 end if
+                 do i1 = 1, size(msh%seg(iseg)%strickler_fields(1)%x) - 1
+                     do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(1)%x)
+                         dx = msh%seg(iseg)%strickler_fields(1)%x(i1) - msh%seg(iseg)%strickler_fields(1)%x(i2)
+                         corr = exp(-abs(dx) / mu) ! exp kernel
+                         array(offset+i1, offset+i2) = corr
+                         array(offset+i2, offset+i1) = corr
+                     end do
+                 end do
+                 offset = offset + size(msh%seg(iseg)%strickler_fields(1)%x)
+             else if (field == "beta" .or. field == "KMC") then
+                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+                    call spatial_correlation_array_fixed(ctrl, msh, mu, n, m, array)
+                    return
+                 end if
+                 do i1 = 1, size(msh%seg(iseg)%strickler_fields(2)%x) - 1
+                     do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(2)%x)
+                         dx = msh%seg(iseg)%strickler_fields(2)%x(i1) - msh%seg(iseg)%strickler_fields(2)%x(i2)
+                         corr = exp(-abs(dx) / mu) ! exp kernel
+                         array(offset+i1, offset+i2) = corr
+                         array(offset+i2, offset+i1) = corr
+                     end do
+                 end do
+                 offset = offset + size(msh%seg(iseg)%strickler_fields(2)%x)
+             else if (field == "KROB") then
+                 if (.not. allocated(msh%seg(iseg)%strickler_fields)) then
+                    call spatial_correlation_array_fixed(ctrl, msh, mu, n, m, array)
+                    return
+                 end if
+                 do i1 = 1, size(msh%seg(iseg)%strickler_fields(3)%x) - 1
+                     do i2 = i1+1, size(msh%seg(iseg)%strickler_fields(3)%x)
+                         dx = msh%seg(iseg)%strickler_fields(3)%x(i1) - msh%seg(iseg)%strickler_fields(1)%x(i2)
+                         corr = exp(-abs(dx) / mu) ! exp kernel
+                         array(offset+i1, offset+i2) = corr
+                         array(offset+i2, offset+i1) = corr
+                     end do
+                 end do
+                 offset = offset + size(msh%seg(iseg)%strickler_fields(3)%x)
+             else if (field == "bathy") then
+                 if (.not. allocated(msh%seg(iseg)%bathy_field%x)) then
+                    call spatial_correlation_array_fixed(ctrl, msh, mu, n, m, array)
+                    return
+                 end if
+                 do i1 = 1, size(msh%seg(iseg)%bathy_field%x) - 1
+                     do i2 = i1+1, size(msh%seg(iseg)%bathy_field%x)
+                         dx = msh%seg(iseg)%bathy_field%x(i1) - msh%seg(iseg)%bathy_field%x(i2)
+                         corr = exp(-abs(dx) / mu) ! exp kernel
+                         array(offset+i1, offset+i2) = corr
+                         array(offset+i2, offset+i1) = corr
+                     end do
+                 end do
+                 offset = offset + size(msh%seg(iseg)%bathy_field%x)
+             end if
+         end do
+        
+     end subroutine
 
 
-    function spatial_correlation_matrix_gaussian(ctrl, msh, mu) result(mat)
-        implicit none
-        type(Control), intent(in) :: ctrl
-        type(Mesh), intent(in) :: msh
-        real(rp), intent(in) :: mu
-        type(Matrix) :: mat
-        ! Index of downstream cross-section
-        integer(ip) :: ds_cs
-        ! Iterators on cross-sections
-        integer(ip) :: ics, ics1, ics2
-        ! Iterator on segments
-        integer(ip) :: iseg
-        ! Number of data (non ghost cross-sections)
-        integer(ip) :: ndata
-        ! Index of upstream cross-section
-        integer(ip) :: us_cs
-        ! Spatial indices (indices of non ghost cross-sections)
-        integer(ip), dimension(:), allocatable :: spatial_index
-        ! Spacing
-        real(rp) :: dx
-        ! Correlation value
-        real(rp) :: corr
-        real(rp), parameter :: PI = 4._rp * atan(1._rp)
+!     ! TODO correct and reactivate
+!     function spatial_correlation_matrix_gaussian(ctrl, msh, mu) result(mat)
+!         implicit none
+!         type(Control), intent(in) :: ctrl
+!         type(Mesh), intent(in) :: msh
+!         real(rp), intent(in) :: mu
+!         type(Matrix) :: mat
+!         ! Index of downstream cross-section
+!         integer(ip) :: ds_cs
+!         ! Iterators on cross-sections
+!         integer(ip) :: ics, ics1, ics2
+!         ! Iterator on segments
+!         integer(ip) :: iseg
+!         ! Number of data (non ghost cross-sections)
+!         integer(ip) :: ndata
+!         ! Index of upstream cross-section
+!         integer(ip) :: us_cs
+!         ! Spatial indices (indices of non ghost cross-sections)
+!         integer(ip), dimension(:), allocatable :: spatial_index
+!         ! Spacing
+!         real(rp) :: dx
+!         ! Correlation value
+!         real(rp) :: corr
+!         real(rp), parameter :: PI = 4._rp * atan(1._rp)
         
-        allocate(spatial_index(size(msh%cs)))
+!         allocate(spatial_index(size(msh%cs)))
         
-        ! Compute spatial indices (indices of non ghost cross-sections)
-        ndata = 0
-        spatial_index(:) = 0
-        do iseg = 1, msh%nseg
-            do ics = msh%seg(iseg)%first_cs, msh%seg(iseg)%last_cs
-                ndata = ndata + 1
-                spatial_index(ics) = ndata
-            end do
-        end do
+!         ! Compute spatial indices (indices of non ghost cross-sections)
+!         ndata = 0
+!         spatial_index(:) = 0
+!         do iseg = 1, msh%nseg
+!             do ics = msh%seg(iseg)%first_cs, msh%seg(iseg)%last_cs
+!                 ndata = ndata + 1
+!                 spatial_index(ics) = ndata
+!             end do
+!         end do
         
-        allocate(mat%m(ndata, ndata))
-        mat%m(:, :) = 0.0_rp
+!         allocate(mat%m(ndata, ndata))
+!         mat%m(:, :) = 0.0_rp
         
-        ! Set values on the diagonal
-        do ics = 1, msh%ncs
-            if (spatial_index(ics) > 0) then
-                mat%m(spatial_index(ics), spatial_index(ics)) = 1.0 / (mu * 2.0 * PI)
-            end if
-        end do
+!         ! Set values on the diagonal
+!         do ics = 1, msh%ncs
+!             if (spatial_index(ics) > 0) then
+!                 mat%m(spatial_index(ics), spatial_index(ics)) = 1.0 / (mu * 2.0 * PI)
+!             end if
+!         end do
         
-        ! Compute correlations in segments
-        do iseg = 1, msh%nseg
-            do ics1 = msh%seg(iseg)%first_cs, msh%seg(iseg)%last_cs-1
-                do ics2 = ics1+1, msh%seg(iseg)%last_cs-1
-                    dx = msh%cs(ics1)%x - msh%cs(ics2)%x
-                    corr = 1.0 / (mu * 2.0 * PI) *  exp(-0.5 * (dx / mu)**2) ! exp kernel
-                    mat%m(spatial_index(ics1), spatial_index(ics2)) = corr
-                    mat%m(spatial_index(ics2), spatial_index(ics1)) = corr
-                end do
-!                 if (abs(mat%m(ics, ics+1)) < 1e-99) mat%m(ics, ics+1) = 0.0_rp
-!                 mat%m(spatial_index(ics+1), spatial_index(ics)) = mat%m(spatial_index(ics), spatial_index(ics+1))
-            end do
-        end do
+!         ! Compute correlations in segments
+!         do iseg = 1, msh%nseg
+!             do ics1 = msh%seg(iseg)%first_cs, msh%seg(iseg)%last_cs-1
+!                 do ics2 = ics1+1, msh%seg(iseg)%last_cs-1
+!                     dx = msh%cs(ics1)%x - msh%cs(ics2)%x
+!                     corr = 1.0 / (mu * 2.0 * PI) *  exp(-0.5 * (dx / mu)**2) ! exp kernel
+!                     mat%m(spatial_index(ics1), spatial_index(ics2)) = corr
+!                     mat%m(spatial_index(ics2), spatial_index(ics1)) = corr
+!                 end do
+! !                 if (abs(mat%m(ics, ics+1)) < 1e-99) mat%m(ics, ics+1) = 0.0_rp
+! !                 mat%m(spatial_index(ics+1), spatial_index(ics)) = mat%m(spatial_index(ics), spatial_index(ics+1))
+!             end do
+!         end do
         
-        ! Compute correlations in junctions
-        do iseg = 1, msh%nseg
-            if (msh%seg(iseg)%ds_seg > 0) then
-                ds_cs = msh%seg(iseg)%last_cs
-                us_cs = msh%seg(msh%seg(iseg)%ds_seg)%first_cs
-                mat%m(spatial_index(ds_cs), spatial_index(us_cs)) = 1.0_rp
-                mat%m(spatial_index(us_cs), spatial_index(ds_cs)) = 1.0_rp
-            end if
-        end do
+!         ! Compute correlations in junctions
+!         do iseg = 1, msh%nseg
+!             if (msh%seg(iseg)%ds_seg > 0) then
+!                 ds_cs = msh%seg(iseg)%last_cs
+!                 us_cs = msh%seg(msh%seg(iseg)%ds_seg)%first_cs
+!                 mat%m(spatial_index(ds_cs), spatial_index(us_cs)) = 1.0_rp
+!                 mat%m(spatial_index(us_cs), spatial_index(ds_cs)) = 1.0_rp
+!             end if
+!         end do
         
-        deallocate(spatial_index)
+!         deallocate(spatial_index)
         
-    end function
+!     end function
     
 
   function calc_cost_reg(ctrl,msh)result(cost_ctrl)

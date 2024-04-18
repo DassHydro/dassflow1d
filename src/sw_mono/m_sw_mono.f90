@@ -65,9 +65,9 @@ module m_sw_mono
     include "mpif.h"
     include 'dmumps_struc.h'
 #endif
-   
+
    !===================================================================================================================!
-   !  Discrete Model Unknows Structure
+   !  Discrete Model Unknowns Structure
    !===================================================================================================================!
 
     !> @brief Structure of unknowns.
@@ -253,7 +253,7 @@ module m_sw_mono
         !> Inflow conditions
         type(InflowCondition), dimension(:), allocatable :: ic
         !> Mesh
-        type(Mesh), pointer :: msh
+        type(Mesh) :: msh
         !> large grid
         type(Mesh), pointer :: large_grid
         !> Unknowns
@@ -313,20 +313,20 @@ module m_sw_mono
             type(Unknowns), intent(inout) :: dof
             integer(ip) :: status
         end subroutine
-        subroutine steady_state(mdl, obs)
-            import Model
-            import Observations
-            implicit none
-            type(Model), intent(inout) :: mdl
-            type(Observations), intent(inout), optional :: obs
-        end subroutine
-        subroutine steady_states_loop(mdl, obs)
-            import Model
-            import Observations
-            implicit none
-            type(Model), intent(inout) :: mdl
-            type(Observations), intent(inout), optional :: obs
-        end subroutine
+!         subroutine steady_state(mdl, obs)
+!             import Model
+!             import Observations
+!             implicit none
+!             type(Model), intent(inout) :: mdl
+!             type(Observations), intent(inout), optional :: obs
+!         end subroutine
+!         subroutine steady_states_loop(mdl, obs)
+!             import Model
+!             import Observations
+!             implicit none
+!             type(Model), intent(inout) :: mdl
+!             type(Observations), intent(inout), optional :: obs
+!         end subroutine
         subroutine time_loop(mdl, obs)
             import Model
             import Observations
@@ -334,17 +334,17 @@ module m_sw_mono
             type(Model), intent(inout) :: mdl
             type(Observations), intent(inout), optional :: obs
         end subroutine
-        subroutine free_surface_slopes_segment(mdl, iseg, h, slopes)
-            import ip
-            import rp
-            import Model
-            import Unknowns
-            implicit none
-            type(Model), intent(in) :: mdl
-            integer(ip), intent(in) :: iseg
-            real(rp), dimension(:), intent(in) :: h
-            real(rp), dimension(:), intent(inout) :: slopes
-        end subroutine
+!         subroutine free_surface_slopes_segment(mdl, iseg, h, slopes)
+!             import ip
+!             import rp
+!             import Model
+!             import Unknowns
+!             implicit none
+!             type(Model), intent(in) :: mdl
+!             integer(ip), intent(in) :: iseg
+!             real(rp), dimension(:), intent(in) :: h
+!             real(rp), dimension(:), intent(inout) :: slopes
+!         end subroutine
     end interface
 #endif
 
@@ -667,16 +667,24 @@ module m_sw_mono
     !  Methods for the Probe type
     !==================================================================================================================!
     
-    subroutine probe_initialise(prb, msh, ics, dt, variables)
+    subroutine probe_initialise(prb, msh, ics, dt, variables, base_cs)
         implicit none
         type(Probe), intent(out) :: prb
         type(Mesh), intent(in), target :: msh
         integer(ip), intent(in) :: ics
         real(rp), intent(in) :: dt
         character(len=*), intent(in) :: variables
+        logical, intent(in), optional :: base_cs
         
         integer(ip) :: i1
         integer(ip) :: ivar
+        logical :: use_base_cs
+
+        if (present(base_cs)) then
+            use_base_cs = base_cs
+        else
+            use_base_cs = .false.
+        end if
 
         ! Setup timestep
         prb%dt = dt
@@ -688,11 +696,17 @@ module m_sw_mono
         end do
         
         ! Retrieve index of base cross-section
-        do i1 = 1, msh%ncs
-            if (msh%cs(i1)%ibase == ics) then
-                prb%ics = i1
-            end if
-        end do
+        if (use_base_cs) then
+            do i1 = 1, msh%ncs
+                if (msh%cs(i1)%ibase == ics) then
+                    prb%ics = i1
+                end if
+            end do
+            ! TODO Check base ics found
+        else
+            ! TODO Check ics does not overflow
+            prb%ics = ics
+        end if
         
     end subroutine
 
@@ -740,8 +754,9 @@ module m_sw_mono
         ! Number of boundary conditions
         integer(ip) :: nbc
 
-        ! Set mesh pointer
-        mdl%msh => msh
+        ! Copy mesh
+        call mesh_copy(msh, mdl%msh)
+
         ! Set large grid default pointer
         mdl%large_grid => NULL()       
         
@@ -964,22 +979,30 @@ module m_sw_mono
         
     end subroutine
     
-    subroutine add_probe(mdl, ics, dt, variables)
+    subroutine add_probe(mdl, ics, dt, variables, base_cs)
         implicit none
         type(Model), intent(inout) :: mdl
         integer(ip), intent(in) :: ics
         real(rp), intent(in) :: dt
         character(len=*), intent(in) :: variables
+        logical, intent(in), optional :: base_cs
         
         integer(ip) :: i1
         integer(ip) :: iprobe
         integer(ip) :: ivar
         integer(ip) :: nprobes
+        logical :: use_base_cs
         type(Probe), dimension(:), allocatable :: probes_tmp
 !         
 !         do ivar = 1, len(variables)
 !             print *, ivar, variables(ivar:ivar)
 !         end do
+
+        if (present(base_cs)) then
+            use_base_cs = base_cs
+        else
+            use_base_cs = .false.
+        end if
         
         ! Store array of already defined probes
         if (allocated(mdl%probes)) then
@@ -1012,9 +1035,84 @@ module m_sw_mono
         end if
         
         ! Setup new probe
-        call probe_initialise(mdl%probes(nprobes+1), mdl%msh, ics, dt, variables)
+        call probe_initialise(mdl%probes(nprobes+1), mdl%msh, ics, dt, variables, use_base_cs)
         
     end subroutine
+    
+    
+    subroutine add_probe_using_coords(mdl, coords, dt, variables, base_cs)
+        implicit none
+        type(Model), intent(inout) :: mdl
+        real(rp), dimension(2), intent(in) :: coords
+        real(rp), intent(in) :: dt
+        character(len=*), intent(in) :: variables
+        logical, intent(in), optional :: base_cs
+        
+        ! Iterators
+        integer(ip) :: i1
+        integer(ip) :: mindistindex
+        real(rp) :: dist
+        real(rp) :: mindist
+        integer(ip) :: iprobe
+        integer(ip) :: ivar
+        integer(ip) :: nprobes
+        logical :: use_base_cs
+        type(Probe), dimension(:), allocatable :: probes_tmp
+        
+        if (present(base_cs)) then
+            use_base_cs = base_cs
+        else
+            use_base_cs = .false.
+        end if
+
+        ! Store array of already defined probes
+        if (allocated(mdl%probes)) then
+        
+            allocate(probes_tmp(size(mdl%probes)))
+            do iprobe = 1, size(mdl%probes)
+                call copy_probe(mdl%probes(iprobe), probes_tmp(iprobe))
+                call probe_finalise(mdl%probes(iprobe))
+            end do
+            nprobes = size(mdl%probes)
+            
+        else
+        
+            nprobes = 0
+        
+        end if
+        
+        ! Reallocate array of probes
+        if (allocated(mdl%probes)) deallocate(mdl%probes)
+        allocate(mdl%probes(nprobes+1))
+
+        ! Copy back already defined probes
+        if (nprobes > 0) then
+        
+            do iprobe = 1, nprobes
+                call copy_probe(probes_tmp(iprobe), mdl%probes(iprobe))
+                call probe_finalise(probes_tmp(iprobe))
+            end do
+        
+        end if
+        
+        ! Find index of cross-section
+        do i1 = 1, mdl%msh%ncs
+            dist = sqrt((coords(1) - mdl%msh%cs(i1)%coord%x)**2 + &
+                        (coords(2) - mdl%msh%cs(i1)%coord%y)**2)
+            if (i1 == 1) then
+                mindist = dist
+                mindistindex = i1
+            else if (dist < mindist) then
+                mindist = dist
+                mindistindex = i1
+            end if
+        end do
+        
+        ! Setup new probe
+        call probe_initialise(mdl%probes(nprobes+1), mdl%msh, mindistindex, dt, variables, use_base_cs)
+        
+    end subroutine add_probe_using_coords
+
     
     subroutine reset_probes(mdl)
         implicit none
@@ -1050,6 +1148,36 @@ module m_sw_mono
         end do
     
     end subroutine
+
+    
+    subroutine run_steady(mdl, obs)
+        implicit none
+        type(Model), intent(inout) :: mdl
+        type(Observations), intent(inout), optional :: obs
+        
+        call steady_state(mdl, obs)
+        
+    end subroutine
+
+    
+    subroutine run_steady_batch(mdl, obs)
+        implicit none
+        type(Model), intent(inout) :: mdl
+        type(Observations), intent(inout), optional :: obs
+        
+        call steady_states_loop(mdl, obs)
+        
+    end subroutine
+
+    
+    subroutine run_unsteady(mdl, obs)
+        implicit none
+        type(Model), intent(inout) :: mdl
+        type(Observations), intent(inout), optional :: obs
+        
+        call time_loop(mdl, obs)
+        
+    end subroutine
     
     
     subroutine model_finalise(mdl)
@@ -1082,6 +1210,13 @@ module m_sw_mono
             deallocate(mdl%probes)
         end if
         
+    end subroutine
+
+    subroutine enable_warnings(value)
+        use m_common, only: disable_warnings
+        implicit none
+        logical, intent(in) :: value
+        disable_warnings = .not. value
     end subroutine
 #endif
 

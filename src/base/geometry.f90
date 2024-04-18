@@ -544,15 +544,16 @@ subroutine widths_compound_channel(cs, h, values)
     use m_mesh, only: Crosssection
     implicit none
     !=ARGUMENTS========================================================================================================!
-    type(Crosssection), intent(in) :: cs
+    type(Crosssection), intent(inout) :: cs
     real(rp), intent(in) :: h
     real(rp), dimension(3), intent(out) :: values
     !=LOCAL VARIABLES==================================================================================================!
     ! Total width
     real(rp) :: total_width
     
+    call update_level(cs, h)
     call width(cs, h, total_width)
-    
+
     if (cs%ob_levels(1) > 0 .and. cs%ob_levels(2) > 0) then
         values(1) = max(0.0_rp, 0.5 * (total_width - cs%level_widths(cs%ob_levels(1))))
         values(3) = max(0.0_rp, 0.5 * (total_width - cs%level_widths(cs%ob_levels(2))))
@@ -751,7 +752,7 @@ subroutine areas_compound_channel(cs, h, values)
     use m_mesh, only: Crosssection
     implicit none
     !=ARGUMENTS========================================================================================================!
-    type(Crosssection), intent(in) :: cs
+    type(Crosssection), intent(inout) :: cs
     real(rp), intent(in) :: h
     real(rp), dimension(3), intent(out) :: values
     !=LOCAL VARIABLES==================================================================================================!
@@ -762,9 +763,11 @@ subroutine areas_compound_channel(cs, h, values)
     ! Total wetted area
     real(rp) :: total_area
     
+    call update_level(cs, h)
     call area(cs, h, total_area)
     
-!     print *, "areas_compound_channel:h=", h
+    ! print *, "areas_compound_channel:h=", h
+    ! print *, "total_area=", total_area
     
     if (cs%ob_levels(1) > 0 .and. cs%ob_levels(2) > 0) then
         dh = h - (cs%level_heights(cs%ob_levels(1)) - cs%bathy)
@@ -788,9 +791,9 @@ subroutine areas_compound_channel(cs, h, values)
         values(3) = 0.0
     end if
     values(2) = total_area - values(1) - values(3)
-!     print *, "-LOB:A=", values(1)
-!     print *, "-MC :A=", values(2)
-!     print *, "-ROB:A=", values(3)
+    ! print *, "-LOB:A=", values(1)
+    ! print *, "-MC :A=", values(2)
+    ! print *, "-ROB:A=", values(3)
   
 end subroutine
 
@@ -890,7 +893,7 @@ subroutine perimeters_compound_channel(cs, h, values)
     use m_mesh, only: Crosssection
     implicit none
     !=ARGUMENTS========================================================================================================!
-    type(Crosssection), intent(in) :: cs
+    type(Crosssection), intent(inout) :: cs
     real(rp), intent(in) :: h
     !> Perimeters (left overbank, channel, right overbank)
     real(rp), dimension(3), intent(out) :: values
@@ -898,6 +901,7 @@ subroutine perimeters_compound_channel(cs, h, values)
     ! Total wetted perimeter
     real(rp) :: total_perimeter
     
+    call update_level(cs, h)
     call perimeter(cs, h, total_perimeter)
     
     if (cs%ob_levels(1) > 0 .and. cs%ob_levels(2) > 0) then
@@ -936,7 +940,7 @@ subroutine strickler(cs, h, value)
     implicit none
     !=ARGUMENTS========================================================================================================!
     !> Cross-section
-    type(Crosssection), intent(in) :: cs
+    type(Crosssection), intent(inout) :: cs
     !> Water depth
     real(rp), intent(in) :: h
     !> Computed Strickler

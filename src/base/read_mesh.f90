@@ -113,15 +113,18 @@ subroutine read_mesh(filename, msh)
     iline = 1
     read(10, '(A)', err=100, end=100) line
     if (line(1:18) == "DASSFLOW-1D MESH V") then
+
         ! Read mesh version
         read(line(19:len_trim(line)), *, err=100, end=100) version
-!         print *, version
         
         ! Read header (comment) line
         iline = iline + 1
         read(10, '(A)', err=100, end=100) line
+
     else
+
         version = 0.0
+        
     end if
     
     ! Read number of cross-sections and segments

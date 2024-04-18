@@ -210,6 +210,10 @@ print $out "    mdl.__last_grad__ = grad\n";
 print $out "    return cost, grad, mdl.status\n";
 print $out "\n";
 
+# Add version
+print $out "\n__version__ = '2.1.0'\n";
+print $out "\n";
+
 # Close file
 close $out;
 
@@ -238,7 +242,39 @@ for ( @copy ) #Parcourt la copie du fichier ligne par ligne
     }
     else
     {
-        if (m/^(\s*)def __str__\(self\):(.*)/i)
+        if (m/^(\s*)def temporal_correlation_array_fixed\(self, t, mu, n, m, array\):(.*)/i)
+        {
+            print $out "    def temporal_correlation_array(self, t, mu):\n";
+            print $out "        array = numpy.zeros((t.size, t.size), order='F')\n";
+            print $out "        self.temporal_correlation_array_fixed(t, mu, t.size, t.size, array)\n";
+            print $out "        return array\n";
+            print $out "\n";
+            print $out "$_";
+            next;
+        }
+        elsif (m/^(\s*)def get_spatial_correlation_array_size\(self, msh\):(.*)/i)
+        {
+            print $out "    def spatial_correlation_array(self, msh, mu):\n";
+            print $out "        size_bn = self.get_spatial_correlation_array_size(msh)\n";
+            print $out "        array = numpy.zeros((size_bn, size_bn), order='F')\n";
+            print $out "        self.spatial_correlation_array_fixed(msh, mu, size_bn, size_bn, array)\n";
+            print $out "        return array\n";
+            print $out "\n";
+            print $out "$_";
+            next;
+        }
+        elsif (m/^(\s*)def get_field_correlation_array_size\(self, msh, field\):(.*)/i)
+        {
+            print $out "    def field_correlation_array(self, msh, field, mu):\n";
+            print $out "        size_bn = self.get_field_correlation_array_size(msh, field)\n";
+            print $out "        array = numpy.zeros((size_bn, size_bn), order='F')\n";
+            print $out "        self.field_correlation_array_fixed(msh, field, mu, size_bn, size_bn, array)\n";
+            print $out "        return array\n";
+            print $out "\n";
+            print $out "$_";
+            next;
+        }
+        elsif (m/^(\s*)def __str__\(self\):(.*)/i)
         {
             print $out "    def get_item_slice(self, index):\n";
             print $out "        if index < 0 or index > self.get_items_count():\n";
@@ -340,6 +376,17 @@ for ( @copy ) #Parcourt la copie du fichier ligne par ligne
             print $out "                return np.array([self.cs[i].level_heights[0] for i in indices])\n";
             print $out "            else:\n";
             print $out "                return np.array([self.cs[i].level_heights[0] for i in range(first_cs-1, last_cs)])\n";
+            print $out "        elif field == \"zm\" or field == \"zhigh\" or field == \"Hhigh\":\n";
+            print $out "            first_cs = self.seg[iseg].first_cs\n";
+            print $out "            last_cs = self.seg[iseg].last_cs\n";
+            print $out "            if base_cs is True:\n";
+            print $out "                indices = []\n";
+            print $out "                for i in range(first_cs-1, last_cs):\n";
+            print $out "                    if self.cs[i].ibase > 0:\n";
+            print $out "                        indices.append(i)\n";
+            print $out "                return np.array([self.cs[i].level_heights[-1] for i in indices])\n";
+            print $out "            else:\n";
+            print $out "                return np.array([self.cs[i].level_heights[-1] for i in range(first_cs-1, last_cs)])\n";
             print $out "        elif field == \"w0\" or field == \"wlow\":\n";
             print $out "            first_cs = self.seg[iseg].first_cs\n";
             print $out "            last_cs = self.seg[iseg].last_cs\n";
@@ -438,6 +485,10 @@ for ( @copy ) #Parcourt la copie du fichier ligne par ligne
             $step = 1;
         }
         print $out "$_";
+        if (m/^(\s*)import logging(.*)/i )
+        {
+            print $out "import numpy as np\n";
+        }
         next;
     }
     elsif ($step == 1)
@@ -445,16 +496,36 @@ for ( @copy ) #Parcourt la copie du fichier ligne par ligne
         if (m/^(\s*)def __str__\(self\):(.*)/i)
         {
     
-            print $out "    def setup(self, mesh, t, values, indices=None, coords=None):\n";
+            print $out "    def setup(self, mesh, t, values, iseg=None, indices=None, coords=None, x=None):\n";
             print $out "    \n";
             print $out "        if indices is not None and coords is not None:\n";
             print $out "            raise ValueError(\"indices and coords cannot be specified at the same time\")\n";
+            print $out "        if indices is not None and x is not None:\n";
+            print $out "            raise ValueError(\"indices and curvilinear abscissa cannot be specified at the same time\")\n";
+            print $out "        if coords is not None and x is not None:\n";
+            print $out "            raise ValueError(\"coords and curvilinear abscissa cannot be specified at the same time\")\n";
             print $out "        if indices is not None:\n";
             print $out "            self.setup_station_using_indices(mesh, indices, t, values)\n";
             print $out "        elif coords is not None:\n";
-            print $out "            raise NotImplementedError(\"setup with coords is not implemented yet\")\n";
+            print $out "            if isinstance(coords, tuple):\n";
+            print $out "                coords = np.array(list(coords)).reshape((2, 1))\n";
+            print $out "            elif isinstance(coords, list):\n";
+            print $out "                coords = np.array(coords)\n";
+            print $out "                if coords.ndim == 1:\n";
+            print $out "                    coords = coords.reshape((2, 1))\n";
+            print $out "                elif coords.shape[2] == 2:\n";
+            print $out "                    coords = coords.T\n";
+            print $out "            if iseg is not None:\n";
+            print $out "                self.setup_station_using_coords_and_segment(mesh, iseg, coords, t, values)\n";
+            print $out "            else:\n";
+            print $out "                self.setup_station_using_coords(mesh, coords, t, values)\n";
+            print $out "        elif x is not None:\n";
+            print $out "            if iseg is not None:\n";
+            print $out "                self.setup_station_using_abscissa_and_segment(mesh, iseg, x, t, values)\n";
+            print $out "            else:\n";
+            print $out "                self.setup_station_using_abscissa(mesh, x, t, values)\n";
             print $out "        else:\n";
-            print $out "          raise ValueError(\"indices or coords must be specified\")\n";
+            print $out "          raise ValueError(\"indices or coords or curvilinear abscissa must be specified\")\n";
             print $out "\n";
             print $out "$_";
             next;

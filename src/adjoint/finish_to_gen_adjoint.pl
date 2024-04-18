@@ -79,13 +79,13 @@ foreach my $file ( <m_*_diff.f90> , <m_*_back.f90> ) # Parmi tous les fichiers d
    my $in_back_type = 0; # Initialisation variable "test" à 0
    my $keep = 0; # Initialisation variable "keep" à 0
    
-      if ( $debug == 1 )
-      {
-         print "----- FILE IS $file -----\n";
-      }
+   if ( $debug == 1 )
+   {
+      print "----- FILE IS $file -----\n";
+   }
  
    for ( @copy ) #Parcourt la copie du fichier ligne par ligne
-  {
+   {
         
       if ( $debug == 1 )
       {
@@ -523,3 +523,212 @@ foreach my $file ( <*_diff.f90> , <*_back.f90> ) {
    }
 
 }
+
+#-----------------------------------------------------------------------------------------------------------------------
+# Update time_loop_back.f90 (LSA, etc.)
+#-----------------------------------------------------------------------------------------------------------------------
+# open(my $in, "<time_loop_back.f90"); # Ouvrir le fichier "file" en mode "lecture"
+
+# my @copy = <$in>;  #Copier le contenu du fichier dans "copy"
+
+# close $in; #Fermer l'original
+
+# open(my $out, ">time_loop_back.f90"); # Reouvrir le fichier en mode "ecriture"  (écrasement du fichier)
+
+# my $test = 0; # Initialisation variable "test" à 0
+# my $in_back_type = 0; # Initialisation variable "test" à 0
+# my $keep = 0; # Initialisation variable "keep" à 0
+
+# if ( $debug == 1 )
+# {
+#    print "----- FILE IS time_loop_back.f90 -----\n";
+# }
+
+# for ( @copy ) #Parcourt la copie du fichier ligne par ligne
+# {
+      
+#    if ( $debug == 1 )
+#    {
+#       print "(LINE)$_\n(test=$test)\n";
+#    }
+   
+#    if ($test == 2)
+#    {
+#       if( m/^\s*END\s*SUBROUTINE.*_(DIFF|BACK).*/i ) #Si la copie contient une fin de subroutine differenciee
+#       {
+#          print $out $_; # On écrit la ligne dans le fichier out
+#          $test = 0;
+#          next;
+#       }
+#       else
+#       {
+#          print $out $_; # On écrit la ligne dans le fichier out
+#          next;
+#       }
+#    }
+#    if ( m/^(\s*)TYPE\((\w*)_(DIFF|BACK)\)(.*)/i ) 
+#       {
+#       # Nothing todo
+#       }
+
+#    elsif    ( m/^\s*TYPE (\w*)_(DIFF|BACK).*/i ) #Si la copie contient un type differencie
+#    {
+#       $in_back_type = 1;
+#       $keep = 1;     #On fixe keep à 1
+#    }
+#    elsif ( m/^\s*TYPE.*/i )  #Sinon si la copie contient une surboutine
+#    {
+#          if ($in_back_type == 0)
+#          {
+#                $test = 1;     #On fixe test à 1
+#                print $out ""; 
+#          }
+#          else
+#          {
+#                print $out $_; 
+#          }
+#       next;
+#    }
+#    if ( m/^(\s*)USE (.*)_(DIFF|BACK), ONLY(.*),/i )  # Recherche des USE ..._DIFF ou ..._BACK dans les fichiers différents de "m_..."
+#    {
+         
+#       my $sub1 = lc $3;
+#       print $out "$1USE $2, ONLY $4 ! Replaced by Perl Script(*)\n"; # Ajout de USE NOM module d'origine
+#       print $out "$1USE $2_$3, ONLY $4_$sub1 ! Replaced by Perl Script(*)\n"; # Ajout de USE NOM module d'origine
+
+# #          my $sub1 = $1;
+# #          my $sub2 = $2;
+# #          my $sub3 = $3;
+# # 
+# #          if ( "@list_sort" =~ /.*$sub2.*/i ) 
+# #             {
+# #             print $out $sub1 ; print $out "USE $sub2\_$sub3\n";
+# #             }
+
+#       next;
+#    }
+#    if    ( m/^\s*SUBROUTINE (\w*)_(DIFF|BACK).*/i ) #Si la copie contient une subroutine differenciee 
+#    {
+#       $test = 2;
+#       if ( $1 !~ m/com_dof/i ) #Si la subroutine n'est pas com_dof
+#       {
+#          $keep = 1;              #On fixe keep à 1
+#          @list = (@list,$file);  #On ajoute le fichier à la liste
+#       }
+#    }
+
+#    elsif ( m/^\s*SUBROUTINE.*/i )  #Sinon si la copie contient une surboutine
+#    {
+#       $test = 1;     #On fixe test à 1
+#       print $out ""; 
+#       next;
+#    }
+   
+#    if    (( m/^\s*.*FUNCTION\s*.*_(DIFF|BACK).*/i )&&( m/^\s.[^'END']\s*.*/i))
+#    {
+#       $keep = 1;     #On fixe keep à 1
+#    }
+
+#    elsif (( m/^\s*.*FUNCTION\s*.*/i )&&( m/^\s.[^'END']\s*.*/i))
+#    {
+#       $test = 1;     # On fixe test à 1
+#       print $out ""; 
+#       next;
+#    }
+
+#    if    ( m/^\s*END\s*TYPE.*_(DIFF|BACK).*/i ) #Si la copie contient une fin de subroutine differenciee
+#    {
+#       $in_back_type = 0;
+#       print $out $_; # On écrit la ligne dans le fichier out
+#       next;
+#    }
+
+#    elsif ( m/^\s*END\s*TYPE.*/i ) #Si la copie contient une fin de subroutine 
+#    {
+#       $test = 0;     #On fixe test à 0
+#       print $out ""; 
+#       next;
+#    }
+
+#    if    ( m/^\s*END\s*SUBROUTINE.*_(DIFF|BACK).*/i ) #Si la copie contient une fin de subroutine differenciee
+#    {
+#       print $out $_; # On écrit la ligne dans le fichier out
+#       next;
+#    }
+
+#    elsif ( m/^\s*END\s*SUBROUTINE.*/i ) #Si la copie contient une fin de subroutine 
+#    {
+#       $test = 0;     #On fixe test à 0
+#       print $out ""; 
+#       next;
+#    }
+
+#    if    ( m/^\s*END\s*FUNCTION\s*.*_(DIFF|BACK).*/i ) #Si la copie  contient une fin de fonction differenciee
+#    { 
+#       print $out $_; # On écrit la ligne dans le fichier out
+#       next;
+#    }
+
+#    elsif ( m/^\s*END\s*FUNCTION\s*.*/i ) # Si la copie contient une fin de fonction
+#    {
+#       $test = 0;        # On fixe test à 0
+#       print $out "";    
+#       next;
+#    }
+
+#    if ( m/^\s*MODULE\s*([a-zA-Z0-9_]*)_(DIFF|BACK).*/i ) # Si la copie contient un module différencié
+#    {
+#       $test = 1;                                        # On fixe le test à 1
+# #          print $out $_."\n  USE $1\n  USE M_TAP_VARS\n\n"; # On écrit la ligne de déf du module plus l'inclusion de mpi et tap_vars
+#       print $out $_."\n  USE $1\n"; # On écrit la ligne de déf du module plus l'inclusion de mpi et tap_vars
+#       #print $out $_."\n  USE $1\n  USE M_MPI_$2\n  USE M_TAP_VARS\n\n";
+#       next;
+#    }
+
+#    if    ( m/^\s*END\s*MODULE\s*.*_(DIFF|BACK).*/i ) #Si la copie  contient une fin de fonction differenciee
+#    { 
+#       print $out $_; # On écrit la ligne dans le fichier out
+#       next;
+#    }
+
+#    if ( m/^\s*CALL POPREAL8(mdl%tc).*/i ) # Si la copie contient un contains
+#    {
+#       print $out "#ifdef USE_LSA";
+#       print $out "        if (lsa%enabled == .true.) then";
+#       print $out "          if (int((mdl%tc - mdl%dt) / gsa%dtout) < int(mdl%tc / gsa%dtout)) then";
+#       print $out "            call apply_control_back(gsa%ctrl, gsa%ctrl_back, mdl, mdl_back)";
+#       print $out "            call write_lsa_results(mdl, gsa)";
+#       print $out "          endif";
+#       print $out "        endif";
+#       print $out "#endif";
+#       $applied1 = 1;
+#    }
+
+#    if ( $test == 1 ) # Si la variable test est à 1
+#    {
+#       print $out ""; # On n'est écrit rien
+#       next;
+#    }
+
+#    if ( m/^\s*1,ad_count*/i )
+#    {
+#       print $out "#ifdef USE_LSA";
+#       print $out "  if (lsa%enabled == .true.) then";
+#       print $out "    call init_lsa_results(lsa)";
+#       print $out "  endif";
+#       print $out "#endif";
+#    }
+
+#    print $out $_;  #On écrit la ligne dans le fichier out
+
+#    if ( m/^\s*ADMM_TAPENADE_INTERFACE.*/i )
+#    {
+#       print $out "#ifdef USE_LSA";
+#       print $out "  USE LSA";
+#       print $out "#endif";
+#    }
+
+
+# }
+
+# close $out; # On ferme le fichier out

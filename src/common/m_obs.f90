@@ -226,7 +226,6 @@ module m_obs
         end if
         if (present(values)) then
             if (size(t) /= size(values, 2)) then
-                print *, "size(values) =", size(values, 1), size(values, 2)
                 call f90wrap_abort("shape(values, 2) must be equal to size(t)")
             end if
             if (size(values, 1) /= 2) then
@@ -238,24 +237,24 @@ module m_obs
         if (allocated(station%t)) deallocate(station%t)
         if (allocated(station%obs)) deallocate(station%obs)
         
-        allocate(mindist(size(coords)))
-        allocate(mindistindex(size(coords)))
-        station%ics(:) = -1
+        allocate(mindist(size(coords, 2)))
+        allocate(mindistindex(size(coords, 2)))
         do i1 = 1, msh%ncs
-            do i2 = 1, size(coords)
-                dist = sqrt((coords(i2, 1) - msh%cs(i1)%coord%x)**2 + &
-                            (coords(i2, 2) - msh%cs(i1)%coord%y)**2)
+            do i2 = 1, size(coords, 2)
+                dist = sqrt((coords(1, i2) - msh%cs(i1)%coord%x)**2 + &
+                            (coords(2, i2) - msh%cs(i1)%coord%y)**2)
                 if (i1 == 1) then
                     mindist(i2) = dist
                     mindistindex(i2) = i1
-                else if (dist < mindistindex(i2)) then
+                else if (dist < mindist(i2)) then
                     mindist(i2) = dist
                     mindistindex(i2) = i1
                 end if
             end do
         end do
-        allocate(station%ics(size(coords)))
-        do i1 = 1, size(coords)
+        allocate(station%ics(size(coords, 2)))
+        station%ics(:) = -1
+        do i1 = 1, size(coords, 2)
             station%ics(i1) = mindistindex(i1)
         end do
         
@@ -271,6 +270,211 @@ module m_obs
         end if
         
     end subroutine setup_station_using_coords
+    
+    
+    subroutine setup_station_using_coords_and_segment(station, msh, iseg, coords, t, values)
+        implicit none
+        type(ObsStation), intent(inout) :: station
+        type(Mesh), intent(in) :: msh
+        integer(ip), intent(in) :: iseg
+        real(rp), dimension(:, :), intent(in) :: coords
+        real(rp), dimension(:), intent(in) :: t
+        real(rp), dimension(:, :), intent(in), optional :: values
+        
+        ! Iterators
+        integer(ip) :: i1, i2
+        integer(ip), dimension(:), allocatable :: mindistindex
+        real(rp) :: dist
+        real(rp), dimension(:), allocatable :: mindist
+        
+        ! Check sizes
+        if (size(coords, 1) /= 2) then
+            call f90wrap_abort("shape(coords, 1) must be 2")
+        end if
+        if (present(values)) then
+            if (size(t) /= size(values, 2)) then
+                call f90wrap_abort("shape(values, 2) must be equal to size(t)")
+            end if
+            if (size(values, 1) /= 2) then
+                call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+            end if
+        end if
+        
+        if (allocated(station%ics)) deallocate(station%ics)
+        if (allocated(station%t)) deallocate(station%t)
+        if (allocated(station%obs)) deallocate(station%obs)
+        
+        allocate(mindist(size(coords, 2)))
+        allocate(mindistindex(size(coords, 2)))
+        do i1 = msh%seg(iseg+1)%first_cs, msh%seg(iseg+1)%last_cs
+            do i2 = 1, size(coords, 2)
+!                 if (i1 == msh%seg(iseg+1)%last_cs) then
+!                     print *, "COORDS:", coords(1, i2), coords(2, i2)
+!                 end if
+                dist = sqrt((coords(1, i2) - msh%cs(i1)%coord%x)**2 + &
+                            (coords(2, i2) - msh%cs(i1)%coord%y)**2)
+                if (i1 == msh%seg(iseg+1)%first_cs) then
+                    mindist(i2) = dist
+                    mindistindex(i2) = i1
+                else if (dist < mindist(i2)) then
+                    mindist(i2) = dist
+                    mindistindex(i2) = i1
+                end if
+            end do
+        end do
+        allocate(station%ics(size(coords, 2)))
+        station%ics(:) = -1
+        do i1 = 1, size(coords, 2)
+            station%ics(i1) = mindistindex(i1)
+        end do
+        
+        allocate(station%t(size(t)))
+        station%t(:) = t(:)
+        station%offset = -1
+        if (present(values)) then
+            allocate(station%obs(2, size(t)))
+            station%obs(:, :) = values(:, :)
+            allocate(station%w(2, size(t)))
+            station%w(:, :) = 1.0
+!             print *, "setup_stations:", ics, values
+        end if
+        
+    end subroutine setup_station_using_coords_and_segment
+    
+    
+    subroutine setup_station_using_abscissa(station, msh, x, t, values)
+        implicit none
+        type(ObsStation), intent(inout) :: station
+        type(Mesh), intent(in) :: msh
+        real(rp), dimension(:), intent(in) :: x
+        real(rp), dimension(:), intent(in) :: t
+        real(rp), dimension(:, :), intent(in), optional :: values
+        
+        ! Iterators
+        integer(ip) :: i1, i2
+        integer(ip), dimension(:), allocatable :: mindistindex
+        real(rp) :: dist
+        real(rp), dimension(:), allocatable :: mindist
+        
+        ! Check sizes
+        if (present(values)) then
+            if (size(t) /= size(values, 2)) then
+                print *, "size(values) =", size(values, 1), size(values, 2)
+                call f90wrap_abort("shape(values, 2) must be equal to size(t)")
+            end if
+            if (size(values, 1) /= 2) then
+                call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+            end if
+        end if
+        
+        if (allocated(station%ics)) deallocate(station%ics)
+        if (allocated(station%t)) deallocate(station%t)
+        if (allocated(station%obs)) deallocate(station%obs)
+        
+        allocate(mindist(size(x)))
+        allocate(mindistindex(size(x)))
+        do i1 = 1, msh%ncs
+            do i2 = 1, size(x)
+                dist = abs((x(i2) - msh%cs(i1)%x))
+                ! if (i2 == 1) then
+                !     print *, i1, dist
+                ! end if
+                if (i1 == 1) then
+                    mindist(i2) = dist
+                    mindistindex(i2) = i1
+                else if (dist < mindist(i2)) then
+                    mindist(i2) = dist
+                    mindistindex(i2) = i1
+                end if
+            end do
+        end do
+        allocate(station%ics(size(x)))
+        station%ics(:) = -1
+        do i1 = 1, size(x)
+            ! print *, "mindistindex=", mindistindex(i1)
+            station%ics(i1) = mindistindex(i1)
+        end do
+        
+        allocate(station%t(size(t)))
+        station%t(:) = t(:)
+        station%offset = -1
+        if (present(values)) then
+            allocate(station%obs(2, size(t)))
+            station%obs(:, :) = values(:, :)
+            allocate(station%w(2, size(t)))
+            station%w(:, :) = 1.0
+!             print *, "setup_stations:", ics, values
+        end if
+        
+    end subroutine setup_station_using_abscissa
+    
+    
+    subroutine setup_station_using_abscissa_and_segment(station, msh, iseg, x, t, values)
+        implicit none
+        type(ObsStation), intent(inout) :: station
+        type(Mesh), intent(in) :: msh
+        integer(ip), intent(in) :: iseg
+        real(rp), dimension(:), intent(in) :: x
+        real(rp), dimension(:), intent(in) :: t
+        real(rp), dimension(:, :), intent(in), optional :: values
+        
+        ! Iterators
+        integer(ip) :: i1, i2
+        integer(ip), dimension(:), allocatable :: mindistindex
+        real(rp) :: dist
+        real(rp), dimension(:), allocatable :: mindist
+        
+        ! Check sizes
+        if (present(values)) then
+            if (size(t) /= size(values, 2)) then
+                print *, "size(values) =", size(values, 1), size(values, 2)
+                call f90wrap_abort("shape(values, 2) must be equal to size(t)")
+            end if
+            if (size(values, 1) /= 2) then
+                call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+            end if
+        end if
+        
+        if (allocated(station%ics)) deallocate(station%ics)
+        if (allocated(station%t)) deallocate(station%t)
+        if (allocated(station%obs)) deallocate(station%obs)
+        
+        allocate(mindist(size(x)))
+        allocate(mindistindex(size(x)))
+        do i1 = msh%seg(iseg+1)%first_cs, msh%seg(iseg+1)%last_cs
+            do i2 = 1, size(x)
+                dist = abs((x(i2) - msh%cs(i1)%x))
+                ! if (i2 == 1) then
+                !     print *, i1, x(i2), msh%cs(i1)%x, dist
+                ! end if
+                if (i1 == msh%seg(iseg+1)%first_cs) then
+                    mindist(i2) = dist
+                    mindistindex(i2) = i1
+                else if (dist < mindist(i2)) then
+                    mindist(i2) = dist
+                    mindistindex(i2) = i1
+                end if
+            end do
+        end do
+        allocate(station%ics(size(x)))
+        station%ics(:) = -1
+        do i1 = 1, size(x)
+            ! print *, "mindistindex=", mindistindex(i1)
+            station%ics(i1) = mindistindex(i1)
+        end do
+        
+        allocate(station%t(size(t)))
+        station%t(:) = t(:)
+        station%offset = -1
+        if (present(values)) then
+            allocate(station%obs(2, size(t)))
+            station%obs(:, :) = values(:, :)
+            allocate(station%w(2, size(t)))
+            station%w(:, :) = 1.0
+!             print *, "setup_stations:", ics, values
+        end if
+        
+    end subroutine setup_station_using_abscissa_and_segment
     
     
     subroutine set_station_weights(station, weights)
@@ -652,6 +856,9 @@ module m_obs
     
     
     function cost_L2_heights(Hest, Hobs) result(cost)
+#ifndef CPP_ADJ
+        use m_common, only: disable_warnings
+#endif
         implicit none
         real(rp), dimension(:), intent(in) :: Hest
         real(rp), dimension(:), intent(in) :: Hobs
@@ -683,7 +890,7 @@ module m_obs
         end do
 #ifndef CPP_ADJ
 !         cost = sqrt(cost**2)
-        if (skipped > 0) then
+        if (skipped > 0 .and. (.not. disable_warnings)) then
             write(tmp(1), '(I32)') skipped
             write(tmp(2), '(F32.2)') skipped * 100.0 / size(Hobs)
             print '(5A)', "[ WARNING ] ", trim(adjustl(tmp(1))), " (" , trim(adjustl(tmp(2))), &
@@ -695,6 +902,9 @@ module m_obs
     
     
     function cost_R2_heights(Hest, Hobs, wobs) result(cost)
+#ifndef CPP_ADJ
+        use m_common, only: disable_warnings
+#endif
         implicit none
         real(rp), dimension(:), intent(in) :: Hest
         real(rp), dimension(:), intent(in) :: Hobs
@@ -727,7 +937,7 @@ module m_obs
         end do
 #ifndef CPP_ADJ
 !         cost = sqrt(cost**2)
-        if (skipped > 0) then
+        if (skipped > 0 .and. (.not. disable_warnings)) then
             write(tmp(1), '(I32)') skipped
             write(tmp(2), '(F32.2)') skipped * 100.0 / size(Hobs)
             print '(5A)', "[ WARNING ] ", trim(adjustl(tmp(1))), " (" , trim(adjustl(tmp(2))), &

@@ -131,7 +131,7 @@ subroutine init_back(cost_back, mdl, mdl_back, ctrl, ctrl_back, obs, obs_back)
     end if
     
     ! (Re)allocate adjoint of mesh
-    allocate(mdl_back%msh)
+    !allocate(mdl_back%msh)
     if (allocated(mdl_back%msh%cs)) deallocate(mdl_back%msh%cs)
     allocate(mdl_back%msh%cs(size(mdl%msh%cs)))
     do ics = 1, size(mdl%msh%cs)

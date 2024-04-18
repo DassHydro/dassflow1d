@@ -315,9 +315,9 @@ module m_mesh
             import Crosssection
             import rp
             implicit none
-            type(Crosssection), intent(in) :: cs
+            type(Crosssection), intent(inout) :: cs
             real(rp), intent(in) :: h
-            real(rp), dimension(3), intent(out) :: values
+            real(rp), dimension(3), intent(inout) :: values
         end subroutine
         subroutine depth_from_area(cs, area, h)
             import Crosssection
@@ -339,9 +339,9 @@ module m_mesh
             import Crosssection
             import rp
             implicit none
-            type(Crosssection), intent(in) :: cs
+            type(Crosssection), intent(inout) :: cs
             real(rp), intent(in) :: h
-            real(rp), dimension(3), intent(out) :: values
+            real(rp), dimension(3), intent(inout) :: values
         end subroutine
         subroutine perimeter(cs, h, value)
             import Crosssection
@@ -355,9 +355,9 @@ module m_mesh
             import Crosssection
             import rp
             implicit none
-            type(Crosssection), intent(in) :: cs
+            type(Crosssection), intent(inout) :: cs
             real(rp), intent(in) :: h
-            real(rp), dimension(3), intent(out) :: values
+            real(rp), dimension(3), intent(inout) :: values
         end subroutine
         subroutine strickler(cs, h, value)
             import Crosssection
@@ -399,9 +399,9 @@ module m_mesh
             import Crosssection
             import rp
             implicit none
-            type(Crosssection), intent(in) :: cs
+            type(Crosssection), intent(inout) :: cs
             real(rp), intent(in) :: h
-            real(rp), dimension(2), intent(out) :: values
+            real(rp), dimension(2), intent(inout) :: values
         end subroutine
         subroutine dKdZ(cs, h, value)
             import Crosssection
@@ -466,14 +466,14 @@ module m_mesh
         end subroutine
     end interface
 
-    ! Interfaces to routines defined in base/bathy_slopes.f90
-    interface
-        subroutine bathy_slopes(msh)
-            import Mesh
-            implicit none
-            type(Mesh), intent(inout) :: msh
-        end subroutine
-    end interface
+!     ! Interfaces to routines defined in base/bathy_slopes.f90
+!     interface
+!         subroutine bathy_slopes(msh)
+!             import Mesh
+!             implicit none
+!             type(Mesh), intent(inout) :: msh
+!         end subroutine
+!     end interface
 
     ! Interfaces to routines defined in base/curvilinear_abscissae.f90
     interface
@@ -657,8 +657,6 @@ module m_mesh
         cs%ob_levels(2) = level_right
         
     end subroutine
-        
-
 
     subroutine crosssection_copy(cs_src, cs_dst)
         implicit none
@@ -730,6 +728,316 @@ module m_mesh
     end subroutine
 
 
+    subroutine crosssection_compute_levels_poly(cs)
+!         import Crosssection
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        call compute_levels_poly(cs)
+    end subroutine
+
+
+    subroutine crosssection_compute_levels_cum(cs)
+!         import Crosssection
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        call compute_levels_cum(cs)
+    end subroutine
+    
+    
+    subroutine crosssection_update_level(cs, h)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: h
+        call update_level(cs, h)
+    end subroutine
+    
+        
+    subroutine crosssection_update_level_from_area(cs, area)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: area
+        call update_level_from_area(cs, area)
+    end subroutine
+    
+        
+    function crosssection_htoA(cs, h) result(A)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: h
+        real(rp) :: A
+        A = htoA(cs, h)
+    end function
+        
+        
+    function crosssection_htoA_noupdate(cs, h) result(A)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: h
+        real(rp) :: A
+        A = htoA_noupdate(cs, h)
+    end function
+
+        
+    function crosssection_htoP(cs, h) result(P)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: h
+        real(rp) :: P
+        P = htoP(cs, h)
+    end function
+        
+        
+    function crosssection_htoP_noupdate(cs, h) result(P)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: h
+        real(rp) :: P
+        P = htoP_noupdate(cs, h)
+    end function
+        
+        
+    function crosssection_htoW(cs, h) result(W)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: h
+        real(rp) :: W
+        W = htoW(cs, h)
+    end function
+    
+        
+    function crosssection_htoW_noupdate(cs, h) result(W)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: h
+        real(rp) :: W
+        W = htoW_noupdate(cs, h)
+    end function
+        
+        
+    function crosssection_Atoh(cs, A) result(h)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: A
+        real(rp) :: h
+        h = Atoh(cs, A)
+    end function
+    
+        
+    function crosssection_Atoh_noupdate(cs, A) result(h)
+!             import Crosssection
+!             import rp
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), intent(in) :: A
+        real(rp) :: h
+        h = Atoh_noupdate(cs, A)
+    end function
+  !       subroutine height(cs, h, value)
+  !           import Crosssection
+  !           import rp
+  !           implicit none
+  !           type(Crosssection), intent(in) :: cs
+  !           real(rp), intent(in) :: h
+  !           real(rp), intent(out) :: value
+  !       end subroutine
+  
+    subroutine crosssection_width(cs, h, value)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        real(rp), intent(in) :: h
+        real(rp), intent(out) :: value
+        call width(cs, h, value)
+    end subroutine
+    
+        
+    subroutine crosssection_widths_compound_channel(cs, h, values)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection) :: cs
+        real(rp), intent(in) :: h
+        real(rp), dimension(3), intent(inout) :: values
+        call widths_compound_channel(cs, h, values)
+    end subroutine
+    
+        
+    subroutine crosssection_depth_from_area(cs, area, h)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        real(rp), intent(in) :: area
+        real(rp), intent(out) :: h
+        call depth_from_area(cs, area, h)
+    end subroutine
+        
+        
+    subroutine crosssection_area(cs, h, value)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        real(rp), intent(in) :: h
+        real(rp), intent(out) :: value
+        call area(cs, h, value)
+    end subroutine
+    
+        
+    subroutine crosssection_areas_compound_channel(cs, h, values)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection) :: cs
+        real(rp), intent(in) :: h
+        real(rp), dimension(3), intent(inout) :: values
+        call areas_compound_channel(cs, h, values)
+    end subroutine
+        
+        
+    subroutine crosssection_perimeter(cs, h, value)
+!             import Crosssection
+!             import rp
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        real(rp), intent(in) :: h
+        real(rp), intent(out) :: value
+        call perimeter(cs, h, value)
+    end subroutine
+    
+    
+    subroutine crosssection_perimeters_compound_channel(cs, h, values)
+        implicit none
+        type(Crosssection) :: cs
+        real(rp), intent(in) :: h
+        real(rp), dimension(3), intent(inout) :: values
+        
+        call perimeters_compound_channel(cs, h, values)
+        
+    end subroutine
+    
+
+    subroutine crosssection_strickler(cs, h, value)
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        real(rp), intent(in) :: h
+        real(rp), intent(out) :: value
+        call strickler(cs, h, value)
+    end subroutine
+
+        
+    subroutine crosssection_pressure(cs, h, gravity, value)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        real(rp), intent(in) :: h
+        real(rp), intent(in) :: gravity
+        real(rp), intent(out) :: value
+        call pressure(cs, h, gravity, value)
+    end subroutine
+    
+        
+    subroutine crosssection_Sg(cs, csm1, csp1, h, gravity, value)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        type(Crosssection), intent(in) :: csm1
+        type(Crosssection), intent(in) :: csp1
+        real(rp), intent(in) :: h
+        real(rp), intent(in) :: gravity
+        real(rp), intent(out) :: value
+        call Sg(cs, csm1, csp1, h, gravity, value)
+    end subroutine
+    
+        
+    subroutine crosssection_dPdZ(cs, h, value)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        real(rp), intent(in) :: h
+        real(rp), intent(out) :: value
+        call dPdZ(cs, h, value)
+    end subroutine
+        
+        
+    subroutine crosssection_dPdZ_compound_channel(cs, h, values)
+!         import Crosssection
+!         import rp
+        implicit none
+        type(Crosssection) :: cs
+        real(rp), intent(in) :: h
+        real(rp), dimension(2), intent(inout) :: values
+        call dPdZ_compound_channel(cs, h, values)
+    end subroutine
+        
+        
+    subroutine crosssection_dKdZ(cs, h, value)
+!             import Crosssection
+!             import rp
+        implicit none
+        type(Crosssection), intent(in) :: cs
+        real(rp), intent(in) :: h
+        real(rp), intent(out) :: value
+        
+        call dKdZ(cs, h, value)
+    end subroutine
+        
+        
+!     subroutine mesh_compute_all_levels_cum(msh)
+! !         import Mesh
+!         implicit none
+!         type(Mesh), intent(inout) :: msh
+!         
+!         call compute_all_levels_cum(msh)
+!     end subroutine
+! 
+!         
+!     subroutine mesh_update_all_levels(msh, h)
+! !         import Mesh
+! !         import rp
+!         implicit none
+!         type(Mesh), intent(inout) :: msh
+!         real(rp), dimension(msh%ncs), intent(in) :: h
+!         call update_all(msh, h)
+!     end subroutine
+! 
+!         
+!     function mesh_search_nearest_cross_section(msh, point) result(indexi)
+! !             import Mesh
+! !             import vec2d
+! !             import ip
+!         implicit none
+!         type(Mesh), intent(in)  ::  msh
+!         type(vec2d), intent(in)  ::  point
+!         integer(ip)  ::  indexi , temp_indexi
+!         
+!         indexi = search_nearest_cross_section(mesh, point)
+!         
+!     end function    
+
+
     !> Allocate are cross section array.
     !! \param[out] var Array of the size of the number of cross section.
     !! \param[in] mesh Mesh structure.
@@ -795,6 +1103,36 @@ module m_mesh
         end if
 
     end subroutine reallocate_Crosssection
+
+
+    subroutine spatialfield_finalise(field)
+        implicit none
+        type(SpatialField), intent(inout) :: field
+
+        if (allocated(field%x)) deallocate(field%x)
+        if (allocated(field%y)) deallocate(field%y)
+
+    end subroutine
+
+
+    subroutine spatialfield_copy(field_src, field_dst)
+        implicit none
+        type(SpatialField), intent(in) :: field_src
+        type(SpatialField), intent(inout) :: field_dst
+
+        call spatialfield_finalise(field_dst)
+        
+        field_dst%interp = field_src%interp
+        if (allocated(field_src%x)) then
+            allocate(field_dst%x(size(field_src%x)))
+            field_dst%x(:) = field_src%x(:)
+        end if
+        if (allocated(field_src%y)) then
+            allocate(field_dst%y(size(field_src%y)))
+            field_dst%y(:) = field_src%y(:)
+        end if
+
+    end subroutine
   
   
     subroutine segment_initialise(seg, nus_segs)
@@ -806,6 +1144,50 @@ module m_mesh
         allocate(seg%us_seg(nus_segs))
         seg%us_seg(:) = -1
     
+    end subroutine
+  
+  
+    subroutine segment_finalise(seg)
+        implicit none
+        type(Segment), intent(inout) :: seg
+    
+        if (allocated(seg%us_seg)) deallocate(seg%us_seg)
+    
+    end subroutine
+
+
+    subroutine segment_copy(seg_src, seg_dst)
+        implicit none
+        type(Segment), intent(in) :: seg_src
+        type(Segment), intent(inout) :: seg_dst
+        integer(ip) :: ifield
+        
+        call segment_finalise(seg_dst)
+        
+        ! Copy cross-sections indices
+        seg_dst%first_cs = seg_src%first_cs
+        seg_dst%last_cs = seg_src%last_cs
+
+        ! Copy connected segments indices
+        seg_dst%ds_seg = seg_src%ds_seg
+        if (allocated(seg_src%us_seg)) then
+            allocate(seg_dst%us_seg(size(seg_src%us_seg)))
+            seg_dst%us_seg(:) = seg_src%us_seg(:)
+        end if
+
+        ! Copy BC indices
+        seg_dst%ds_bc = seg_src%ds_bc
+        seg_dst%us_bc = seg_src%us_bc
+
+        ! Copy spatial fields
+        if (allocated(seg_src%strickler_fields)) then
+            allocate(seg_dst%strickler_fields(size(seg_src%strickler_fields)))
+            do ifield = 1, size(seg_src%strickler_fields)
+                call spatialfield_copy(seg_src%strickler_fields(ifield), seg_dst%strickler_fields(ifield))
+            end do
+        end if
+        call spatialfield_copy(seg_src%bathy_field, seg_dst%bathy_field)
+        
     end subroutine
   
   
@@ -846,13 +1228,13 @@ module m_mesh
     end subroutine
 
 
-    subroutine segment_finalise(seg)
-        implicit none
-        type(Segment), intent(inout) :: seg
+    ! subroutine segment_finalise(seg)
+    !     implicit none
+    !     type(Segment), intent(inout) :: seg
         
-        if (allocated(seg%us_seg)) deallocate(seg%us_seg)
+    !     if (allocated(seg%us_seg)) deallocate(seg%us_seg)
         
-    end subroutine
+    ! end subroutine
 
 
 !**********************************************************************************************************************!
@@ -899,7 +1281,7 @@ module m_mesh
     !! \param[in] nseg Number of segments
     subroutine mesh_initialise(msh, ncs, nseg)
         implicit none
-        type(Mesh), intent(inout) :: msh                           
+        type(Mesh), intent(inout) :: msh
         integer, intent(in) :: ncs
         integer, intent(in), optional :: nseg
         
@@ -919,6 +1301,51 @@ module m_mesh
         end do
 
     end subroutine mesh_initialise
+
+
+    !> Initialise a mesh
+    !! \param[in,out] msh Instance of Mesh
+    !! \param[in] ncs Number of cross-sections
+    !! \param[in] nseg Number of segments
+    subroutine mesh_finalise(msh)
+        implicit none
+        type(Mesh), intent(inout) :: msh
+
+    end subroutine mesh_finalise
+
+
+    !> Initialise a mesh
+    !! \param[in,out] msh Instance of Mesh
+    !! \param[in] ncs Number of cross-sections
+    !! \param[in] nseg Number of segments
+    subroutine mesh_copy(src, dst)
+        implicit none
+        type(Mesh), intent(in) :: src
+        type(Mesh), intent(inout) :: dst
+
+        integer(ip) :: ics
+        integer(ip) :: iseg
+
+        call mesh_finalise(dst)
+
+        dst%ncs = src%ncs
+        dst%nseg = src%nseg
+        dst%has_ghost_cells = src%has_ghost_cells
+        dst%strickler_type_code = src%strickler_type_code
+
+        ! Copy cross-sections
+        allocate(dst%cs(size(src%cs)))
+        do ics = 1, size(src%cs)
+            call crosssection_copy(src%cs(ics), dst%cs(ics))
+        end do
+
+        ! Copy segments
+        allocate(dst%seg(size(src%seg)))
+        do iseg = 1, size(src%seg)
+            call segment_copy(src%seg(iseg), dst%seg(iseg))
+        end do
+
+    end subroutine mesh_copy
     
     
     subroutine mesh_check(msh)
@@ -1666,7 +2093,6 @@ module m_mesh
                 allocate(msh%seg(iseg)%strickler_fields(2)%y(1))
                 msh%seg(iseg)%strickler_fields(1)%interp = "segment"
                 msh%seg(iseg)%strickler_fields(1)%y(:) = strickler_params(1, iseg)
-                print *, "msh%seg(iseg)%strickler_fields(1)%y=", msh%seg(iseg)%strickler_fields(1)%y
                 msh%seg(iseg)%strickler_fields(2)%interp = "segment"
                 msh%seg(iseg)%strickler_fields(2)%y(:) = strickler_params(2, iseg)
 #if defined(STRICKLER_EINSTEIN) || defined(AVERAGE_CONVEYANCE) || defined(DEBORD_FORMULA)
@@ -1933,6 +2359,15 @@ module m_mesh
         
         ics = msh%seg(iseg+1)%first_cs + ics_seg - 1
         
+    end subroutine
+
+
+    subroutine update_bathy_slopes(msh)
+        implicit none
+        type(Mesh), intent(inout) :: msh
+        
+        call bathy_slopes(msh)
+    
     end subroutine
 
 

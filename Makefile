@@ -1,6 +1,6 @@
 #======================================================================================================================!
 #
-#                    DassFlow1D Version 2.0
+#                    DassFlow1D Version 2.1
 #
 #======================================================================================================================!
 #
@@ -636,35 +636,46 @@ cleanlibs:
 #                build/api/m_opt.f90 \
 #                build/api/m_setup.f90 \
 
+# WRAPPERS_CPP = build/api/m_linear_algebra.f90 \
+#                build/api/free_surface_slopes.f90 \
+#                build/api/bathy_slopes.f90 \
+#                build/api/curvilinear_abscissae.f90 \
+#                build/api/read_mesh.f90 \
+#                build/api/rectangular_mesh.f90 \
+#                build/api/write_mesh.f90 \
+#                build/api/read_spatial_field.f90 \
+#                build/api/m_mesh.f90 \
+#                build/api/m_minimization.f90 \
+#                build/api/m_obs.f90 \
+#                build/api/m_sw_mono.f90 \
+#                build/api/m_control.f90 \
+#                build/api/geometry.f90 \
+#                build/api/apply_bathy_field.f90 \
+#                build/api/apply_strickler_fields.f90 \
+#                build/api/apply_control.f90 \
+#                build/api/calc_cost.f90 \
+#                build/api/generate_observations.f90 \
+#                build/api/preissmann_timestep.f90 \
+#                build/api/implicit_diffusive_wave.f90 \
+#                build/api/standard_step.f90 \
+#                build/api/steady_state.f90 \
+#                build/api/steady_states_loop.f90 \
+#                build/api/time_loop.f90
+# #               build/api/time_loop.f90 \
+# #               build/api/m1qn3.f
+# #                build/api/resample_mesh.f90 \
+
 WRAPPERS_CPP = build/api/m_linear_algebra.f90 \
-               build/api/free_surface_slopes.f90 \
-               build/api/bathy_slopes.f90 \
-               build/api/curvilinear_abscissae.f90 \
                build/api/read_mesh.f90 \
                build/api/rectangular_mesh.f90 \
                build/api/write_mesh.f90 \
-               build/api/read_spatial_field.f90 \
                build/api/m_mesh.f90 \
                build/api/m_minimization.f90 \
                build/api/m_obs.f90 \
                build/api/m_sw_mono.f90 \
                build/api/m_control.f90 \
-               build/api/geometry.f90 \
-               build/api/apply_bathy_field.f90 \
-               build/api/apply_strickler_fields.f90 \
-               build/api/apply_control.f90 \
-               build/api/calc_cost.f90 \
-               build/api/generate_observations.f90 \
-               build/api/preissmann_timestep.f90 \
-               build/api/implicit_diffusive_wave.f90 \
-               build/api/standard_step.f90 \
-               build/api/steady_state.f90 \
-               build/api/steady_states_loop.f90 \
-               build/api/time_loop.f90
-#               build/api/time_loop.f90 \
-#               build/api/m1qn3.f
-#                build/api/resample_mesh.f90 \
-
+               build/api/calc_cost.f90
+               
 ifeq ($(ADJOINT),1)
 	WRAPPERS_CPP += build/api/calc_cost_and_gradients.f90
 endif
@@ -782,7 +793,7 @@ build/api/_dassflow1d.so: build/api/dassflow1d \
                           build/obj \
                           build/tap \
                           $(OBJ_PY) $(WRAPPERS_CPP) $(ASSIM_PY) $(POST_PY) $(UTILS_PY)
-	cd build/api ; f90wrap -m dassflow1d $(patsubst build/api/%, %, ${WRAPPERS_CPP}) -k kind_map -S 128 -P -M 
+	cd build/api ; f90wrap -m dassflow1d $(patsubst build/api/%, %, ${WRAPPERS_CPP}) -k kind_map -S 128 -P -M --shorten-routine-names
 	cd build/api ; f2py-f90wrap --fcompiler=gfortran --opt="-O3" --build-dir . -c -m _dassflow1d -I../obj -L. f90wrap*.f90 ../obj/*.o $(FLIBS)
 	cp ./src/wrappers/finish_to_gen_wrappers.pl ./build/api/
 	cd ./build/api ; perl finish_to_gen_wrappers.pl
