@@ -85,13 +85,13 @@ else
 
     export CFLAGS = -cpp -g -finit-real=nan -fbounds-check -ffree-line-length-0 -I./build/obj -J./build/obj -ffpe-trap=invalid,zero,overflow,underflow -fPIC -fallow-argument-mismatch
     export CFLAGS_USER_DATA = -g -fbounds-check -ffree-line-length-0 -I./build/obj -ffpe-trap=invalid,zero,overflow,underflow -fPIC -fallow-argument-mismatch
-    export FFLAGS = -fPIC
+    export FFLAGS = -fPIC -fallow-argument-mismatch
 
   else
 
     export CFLAGS = -cpp -O3 -finit-real=nan -fno-range-check -ffree-line-length-0 -I./build/obj -J./build/obj -fPIC -fallow-argument-mismatch
     export CFLAGS_USER_DATA = -O3 -fno-range-check -ffree-line-length-0 -I./build/obj -fPIC -fallow-argument-mismatch
-    export FFLAGS = -fPIC
+    export FFLAGS = -fPIC -fallow-argument-mismatch
 
   endif
 
@@ -388,7 +388,13 @@ tapfiles: copy tgt adj post
 
 tap_files: copy tgt adj post
 
+#generate_adjoint: copy tgt adj post
+ifeq ($(ADJOINT),1)
 generate_adjoint: copy tgt adj post
+else
+generate_adjoint:
+	$(error ADJOINT must be set to 1");
+endif
 
 tap_files_no_post: copy tgt adj
 
@@ -723,7 +729,8 @@ OBJ_PY = ./build/obj/m_common.o \
           ./build/obj/update_internal_counters.o \
           ./build/obj/update_probes.o
 ifeq ($(ADJOINT),1)
-	OBJ_PY += ./build/obj/adStack.o \
+	OBJ_PY += ./build/obj/adBuffer.o \
+            ./build/obj/adStack.o \
             ./build/obj/admm_tapenade_interface.o \
             ./build/obj/m_linear_algebra_back.o \
             ./build/obj/m_linear_solver_back.o \
@@ -835,4 +842,4 @@ print_params:
 	@echo "ADJOINT=$(ADJOINT)"
 	@echo "TAPENADE_VERSION=$(TAPENADE_VERSION) (padded:$(TAPENADE_VERSION_PADDED))" 
 	@echo "TAPENADE_DIR=$(TAPENADE_DIR)"
-	@echo "TAPENADE_BACKARGS=$(TAPENADE_BACKARGS)"
+	@echo TAPENADE_BACKARGS=$(TAPENADE_BACKARGS)
