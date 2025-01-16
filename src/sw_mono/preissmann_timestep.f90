@@ -561,6 +561,21 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
             open(199, file="error.txt")
             write(199, '(3(A,I6))') "NaN internal variable detected on segment ", iseg-1, ", cross-sections ", ie, &
                                     " and ", ie+1
+            write(199, '(A,F6.2,1X,F6.2)') "h:", dof%h(ie), dof%h(ie+1)
+            write(199, '(A,F6.2,1X,F6.2)') "b:", msh%cs(ie)%bathy, msh%cs(ie+1)%bathy
+            write(199, '(A,F8.2,1X,F8.2)') "w:", wL, wR
+            write(199, '(A,E12.5,1X,E12.5)') "a:", aL, aR
+            write(199, '(A,F6.2,1X,F6.2)') "r:", rhL, rhR
+            write(199, '(A)') ""
+            write(199, '(A)') "LEFT:"
+            do i = 1, size(msh%cs(ie)%level_heights)
+                write(199, '(I4.4,1X,F6.2,1X,F8.2,1X,E12.5)') i, msh%cs(ie)%level_heights(i), msh%cs(ie)%level_widths(i), msh%cs(ie)%area_cum(i)
+            end do
+            write(199, '(A)') ""
+            write(199, '(A)') "RIGHT:"
+            do i = 1, size(msh%cs(ie+1)%level_heights)
+                write(199, '(I4.4,1X,F6.2,1X,F8.2,1X,E12.5)') i, msh%cs(ie+1)%level_heights(i), msh%cs(ie+1)%level_widths(i), msh%cs(ie+1)%area_cum(i)
+            end do
             close(199)
             return
         end if

@@ -657,6 +657,21 @@ module m_mesh
         cs%ob_levels(2) = level_right
         
     end subroutine
+  
+
+    subroutine set_strickler_params(cs, params)
+        implicit none
+        type(Crosssection), intent(inout) :: cs
+        real(rp), dimension(:), intent(in) :: params
+
+        if (size(params) > 3) then
+            call f90wrap_abort("Wrong number of parameters (must be <= 3))")
+        end if
+        print *, "set_strickler_params", params
+        cs%strickler_params(1:size(params)) = params
+    
+    end subroutine
+
 
     subroutine crosssection_copy(cs_src, cs_dst)
         implicit none
@@ -1447,6 +1462,15 @@ module m_mesh
         integer(ip), intent(in) :: nlevels
         
         call crosssection_initialise(msh%cs(ics), nlevels)
+        
+    end subroutine
+    
+    
+    subroutine mesh_finalise_curvilinear_abscissae(msh)
+        implicit none
+        type(Mesh), intent(inout) :: msh
+        
+        call finalise_curvilinear_abscissae(msh)
         
     end subroutine
 

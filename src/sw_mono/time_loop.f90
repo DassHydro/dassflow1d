@@ -222,11 +222,13 @@ subroutine time_loop(mdl, obs)
    
     ! Time loop
     nt = 0
+    ! do while(mdl%tc < mdl%te - 0.0000001)
     do while(mdl%tc < mdl%te)
    
         ! Advance time
         nt = nt + 1
         mdl%tc = mdl%tc + mdl%dt
+        ! if (mdl%tc > mdl%te + 1e-12) mdl%tc = mdl%te
 #ifndef CPP_ADJ
         if (int((mdl%tc - mdl%dt) / mdl%dtout) < int(mdl%tc / mdl%dtout)) then
             if (mdl%print_progress) then

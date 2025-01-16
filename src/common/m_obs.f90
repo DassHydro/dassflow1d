@@ -621,11 +621,20 @@ module m_obs
         integer(ip) :: ndata
         ! Number of stations
         integer(ip) :: nsta
+        ! String to store number value
+        character(len=32) :: tmp
+        ! Message string
+        character(len=128) :: msg
         
         ! Count number of data and set offsets
         ndata = 0
         use_weights = .false.
         do ista = 1, size(obs%stations)
+            if (.not. allocated(obs%stations(ista)%t)) then
+                write(tmp, '(I32)') ista
+                write(msg, '(3A)') "station ", trim(adjustl(tmp)), " has not been setup"
+                call abort_solver(msg)
+            end if
             obs%stations(ista)%offset = ndata
             ndata = ndata + size(obs%stations(ista)%t)
             if (allocated(obs%stations(ista)%w)) then
@@ -662,6 +671,7 @@ module m_obs
             end if
             if (use_weights) then
                 if (.not. allocated(obs%stations(ista)%w)) then
+                    print *, ista
                     call abort_solver("Station has no weight set")
                 end if
                 obs%w(:, idata+1:idata+ndata) = obs%stations(ista)%w(:, :)

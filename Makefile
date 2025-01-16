@@ -729,8 +729,7 @@ OBJ_PY = ./build/obj/m_common.o \
           ./build/obj/update_internal_counters.o \
           ./build/obj/update_probes.o
 ifeq ($(ADJOINT),1)
-	OBJ_PY += ./build/obj/adBuffer.o \
-            ./build/obj/adStack.o \
+	OBJ_PY += ./build/obj/adStack.o \
             ./build/obj/admm_tapenade_interface.o \
             ./build/obj/m_linear_algebra_back.o \
             ./build/obj/m_linear_solver_back.o \

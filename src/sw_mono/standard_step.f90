@@ -160,7 +160,7 @@ subroutine standard_step(mdl, eps, itermax)
             if (mdl%bc(ibc)%id == "discharge") then
             
                 q = linear_interp(mdl%bc(ibc)%ts%t, mdl%bc(ibc)%ts%y, mdl%tc)
-!                 print *, "standard step: q=", q
+                ! print *, "standard step: q=", q
                 
             end if
         
@@ -236,7 +236,6 @@ subroutine standard_step(mdl, eps, itermax)
     
         if (allocated(mdl%bc(ibc)%ts%t)) then
             mdl%dof%h(ics) = linear_interp(mdl%bc(ibc)%ts%t, mdl%bc(ibc)%ts%y, mdl%tc) - mdl%msh%cs(ics)%bathy
-!             print *, "Z(t):", mdl%tc, mdl%dof%h(ics) + mdl%msh%cs(ics)%bathy
             call update_level(mdl%msh%cs(ics), mdl%dof%h(ics))
         else
             mdl%dof%h(ics) = mdl%bc(ibc)%ts%y(1) - mdl%msh%cs(ics)%bathy
@@ -595,16 +594,20 @@ subroutine standard_step_segment(eps, itermax, mdl, iseg)
         debR = kcR(1) * acR(1) * rhcR(1)**d2p3 + &
                kcR(2) * acR(2) * rhcR(2)**d2p3 + &
                kcR(3) * acR(3) * rhcR(3)**d2p3
+        ! print *, "OUT:H=", zR, ",A=", acR(2), acR(1)+acR(3), ",P=", pcR(2), pcR(1)+pcR(3)
 #endif
     else
         call area(mdl%msh%cs(ics), hR, aR)
         call perimeter(mdl%msh%cs(ics), hR, pR)
         call width(mdl%msh%cs(ics), hR, wR)
         call strickler(mdl%msh%cs(ics), hR, kR)
+        ! print *, "KEND", kR, mdl%msh%cs(ics)%strickler_params
         rhR = aR / pR
         debR = kR * aR * rhR**d2p3
+        ! print *, "DEBEND", debR, aR, rhR
     end if
     uR = q / aR
+
       
     ! Iterate on cross-section from downstream to upstream
 #ifdef DEBUG_SAVE_SEGMENT
@@ -616,7 +619,7 @@ subroutine standard_step_segment(eps, itermax, mdl, iseg)
         !  Convergence loop
         hm1 = hR
         hm2 = hR + 0.1
-!         print *, "start:", hm1, hm2
+        ! print *, "start:", hm1, hm2
         iter = 0
         do while(abs(hm1 - hm2) > eps .and. iter < itermax)
         
@@ -689,6 +692,7 @@ subroutine standard_step_segment(eps, itermax, mdl, iseg)
             ! Compute elevation using energy equation
             dx = mdl%msh%cs(ics+1)%deltademi
             zL = zR + demi * (uR**2 - uL**2) / mdl%gravity + dx * Sf
+            ! print *, demi * (uR**2 - uL**2) / mdl%gravity, dx * Sf, q, deb, dx
 !             print *, " ** dx", dx
 !             print *, " ** Hc", hc
 !             read(*,*)
@@ -705,9 +709,19 @@ subroutine standard_step_segment(eps, itermax, mdl, iseg)
 #endif
             end if
 #ifdef DEBUG_L2
+            print '(6(A,F12.6),A)', "L:d=", h, ",u=", uL, ",A=(", acL(2), ",", acL(1)+acL(3), &
+                                  "),P=(", pcL(2), ",", pcL(1)+pcL(3), ")"
+            print '(6(A,F12.6),A)', "R:d=", hR, ",u=", uR, ",A=(", acR(2), ",", acR(1)+acR(3), &
+                                  "),P=(", pcR(2), ",", pcR(1)+pcR(3), ")"
             print *, " ** dZ", demi * (uR**2 - uL**2) / mdl%gravity + dx * Sf
             print *, " --DETAILS", uR, uL, Sf, dx
             print *, " ** z", zL
+            print *, " ** DebL", debL, kcL(2) * acL(2) * rhcL(2)**d2p3, &
+                                 kcL(1) * acL(1) * rhcL(1)**d2p3 + kcL(3) * acL(3) * rhcL(3)**d2p3
+            print *, " ** DETAIL_L", kcL(2), acL(2), rhcL(2)
+            print *, " ** DebR", debR, kcR(2) * acR(2) * rhcR(2)**d2p3, &
+                                 kcR(1) * acR(1) * rhcR(1)**d2p3 + kcR(3) * acR(3) * rhcR(3)**d2p3
+            print *, " ** DETAIL_R", kcR(2), acR(2), rhcR(2)
             print *, " ** h,hc", h, hc
             read(*,*)
 #endif
@@ -766,6 +780,9 @@ subroutine standard_step_segment(eps, itermax, mdl, iseg)
         ! Compute final water depth
         h = demi * (hm1 + hm2)
         zL = mdl%msh%cs(ics)%bathy + h
+        ! print *, ics, zL
+        ! print *, "KCUR", kL, mdl%msh%cs(ics)%strickler_params
+        ! print *, "DEBCUR", debL, aL, rhL
         
 #ifdef DEBUG_SAVE_SEGMENT
         write(174, '(I4.4,11(A,E12.5))') ics-1, ";", dx, ";", h, ";", uL, ";", aL, ";", pL, &

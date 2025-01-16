@@ -88,6 +88,12 @@ def create_model(config):
         # Set uniform values
         values = config["model"]["strickler_values"]["values"]
         mesh.set_uniform_strickler_parameters(values)
+
+    elif config["model"]["strickler_values"]["type"] == "segment_uniform":
+        
+        # Set segment values
+        values = config["model"]["strickler_values"]["values"]
+        mesh.set_strickler_fields_segment(values)
         
     elif config["model"]["strickler_values"]["type"] == "fields":
         pass
@@ -98,7 +104,10 @@ def create_model(config):
             #raise RuntimeError("'strickler_fields' parameter not specified in 'model' section")
     else:
         raise RuntimeError("wrong type of strickler values : %s" % config["model"]["strickler_values"]["type"])
-    
+
+    print(mesh.strickler_type_code)
+    print(mesh.cs[2].strickler_params)
+
     # Create model from mesh
     model = m_sw_mono.Model(mesh)
     
@@ -120,6 +129,7 @@ def create_model(config):
     for ibc, bc_config in enumerate(config["model"]["boundary_conditions"]):
         model.bc[ibc].id = bc_config["id"]
         if "timeseries_file" in bc_config:
+            # print("date_start=", date_start)
             t, y = load_timeseries(bc_config["timeseries_file"], datestart=date_start)
             model.bc[ibc].set_timeseries(t, y)
     
@@ -269,6 +279,9 @@ def load_control(config, model):
     mesh = model.msh
     
     # Add items in control
+    use_becm = False
+    becm_sigmas = []
+    becm_lengths = []
     for item_config in config["control"]:
         
         if item_config["variable"] == "K":
@@ -329,7 +342,44 @@ def load_control(config, model):
             
             raise RuntimeError("Cannot add unknown variable '%s' in control" % item_config["variable"])
 
+        # Setup Background Error Covariance Matrix (BECM) parameters
+        if "sigma" in item_config:
+            use_becm = True
+            becm_sigmas.append(item_config["sigma"])
+        else:
+            becm_sigmas.append(np.nan)
+        if "correlation_length" in item_config:
+            use_becm = True
+            becm_lengths.append(item_config["correlation_length"])
+        else:
+            becm_lengths.append(np.nan)
+
     print("Control size: %i" % control.x.size)
+
+    if use_becm is True:
+        print("Use Background Error Correlation Matrix")
+        control.x0 = control.x[:]
+        # x_prior = control.x0.copy()
+        B = control.zero_block_matrix()
+
+        for i, item_config in enumerate(config["control"]):
+
+            sigma = becm_sigmas[i]
+            length = becm_lengths[i]
+            if np.isfinite(sigma):
+                if np.isfinite(length):
+                    if item_config["variable"] in ["K", "alpha", "beta", "KLOB", "KCH", "KROB", "bathy"]:
+                        B.blocks[i].m[:, :] = sigma**2 * control.spatial_correlation_array(mesh, length)
+                    elif item_config["variable"][0:3] == "QIN":
+                        ibc = int(item_config["variable"][3:])
+                        B.blocks[i].m[:, :] = sigma**2 * control.temporal_correlation_array(model.bc[ibc].ts.t, length)
+                else:
+                    B.blocks[i].m[:, :] = sigma**2 * np.eye(B.blocks[i].m.shape[0])
+            elif np.isfinite(length):
+                raise ValueError("Cannot use correlation length without sigma")
+
+        control.set_prior_error_covariance_matrixblock(B)
+        control.x[:] = 0.0
     print("")
     
     return control
@@ -339,6 +389,11 @@ def run_direct(config, display_internal_counters=False):
   
     # Create model
     model = create_model(config)
+    print(model)
+    print(model.bc[1].ts.t)
+    print(model.bc[1].ts.y)
+    print(model.msh.strickler_type)
+    print(model.msh.cs[2].strickler_params)
     
     # Run direct
     print("=" * 80)
@@ -346,7 +401,14 @@ def run_direct(config, display_internal_counters=False):
     print("=" * 80)
     
     # Run direct model
-    model.time_loop()
+    model.run_unsteady()
+    print(model.status)
+    print(model.res.h[:, 0])
+    bathy = model.msh.get_segment_field(0, "bathy", base_cs=False)
+    x = model.msh.get_segment_field(0, "x", base_cs=False)
+    plt.plot(x, bathy, "k-")
+    plt.plot(x, bathy+model.res.h[2:-2, 0], "b-")
+    plt.show()
     if display_internal_counters:
         print("- Number of overbank flow occurences: %i" % model.internal_counters[0])
         print("  - Left overbank flow occurences : %i" % model.internal_counters[1])
@@ -380,6 +442,25 @@ def run_calc_cost(config, display_internal_counters=False):
         print("- Number of overflow (flow above highest elevation) occurences: %i" % model.internal_counters[3])
     print("- cost: %f" % cost)
     print("")
+
+    plt.plot(obs.obs[0, :], "ro")
+    plt.plot(obs.est[0, :], "b-")
+    plt.show()
+
+    delta = np.mean(obs.obs[0, :]) - np.mean(obs.est[0, :])
+    plt.plot(obs.obs[0, :], "ro")
+    plt.plot(obs.est[0, :] + delta, "b-")
+    plt.show()
+
+    # print(model.res.t)
+    # index = np.argmin(5.09400E+05-model.res.t)
+    # bathy = model.msh.get_segment_field(0, "bathy", base_cs=False)
+    # x = model.msh.get_segment_field(0, "x", base_cs=False)
+    # plt.plot(x, bathy, "k-")
+    # plt.plot(x, bathy+model.res.h[2:-2, index], "b-")
+    # plt.title("t=%.3f" % model.res.t[index])
+    # plt.show()
+
 
 
 def run_calc_cost_and_grad(config, display_cost=True, display_internal_counters=False):
@@ -481,6 +562,96 @@ def run_gradient_test(config, iterations=34, delta=1e-3):
     
 
 
+def run_optim(config, max_iterations=200, feps=1e-3):
+
+    # Create model
+    model = create_model(config)
+  
+    # Load observations
+    obs = load_observations(config, model)
+  
+    # Setup control
+    control = load_control(config, model)
+    
+    # Run gradient test 
+    print("=" * 80)
+    print(" OPTIMISATION")
+    print("=" * 80)
+    
+    # Run adjoint model to compute cost and gradient
+    dtout0 = model.dtout
+    model.dtout = -1
+    model.disable_stdout = True
+
+    res = scipy.optimize.minimize(dassflow1d.calc_cost_and_gradients_scipy_minimize, control.x, 
+                                  args=(model, control, obs), jac=True, tol = 1e-7, 
+                                  method='L-BFGS-B', options={"disp": True})
+    
+    model.dtout = dtout0
+    model.run_unsteady()
+
+    valid = np.ravel(np.argwhere(obs.est[0, :] > -99999))
+    yobs = obs.obs[0, valid]
+    residuals = obs.est[0, valid] - yobs
+    rmse = np.sqrt(np.sum(np.ravel(residuals)**2) / obs.obs.shape[1])
+    nse = 1.0 - np.sum(np.ravel(residuals)**2) / np.sum((np.ravel(yobs) - np.mean(np.ravel(yobs)))**2)
+    plt.plot(obs.obs[0, :], "ro")
+    plt.plot(obs.est[0, :], "b-")
+    plt.title("valid: %i, rmse=%.2f cm" % (valid.size, rmse))
+    plt.show()
+
+    delta = np.mean(obs.obs[0, :]) - np.mean(obs.est[0, :])
+    rmse = np.sqrt(np.sum(np.ravel(residuals+delta)**2) / obs.obs.shape[1])
+    plt.plot(obs.obs[0, :], "ro")
+    plt.plot(obs.est[0, :] + delta, "b-")
+    plt.title("valid: %i, rmse=%.2f cm" % (valid.size, rmse))
+    plt.show()
+
+
+    # cost, grad = dassflow1d.calc_cost_and_gradients(model, control, obs)
+    # grad_norm = np.linalg.norm(grad)
+    # print("- cost  : %f" % cost)
+    # print("- |grad|: %f" % grad_norm)
+    # print("")
+    
+    # # Loop on epsilon values
+    # dx = control.x * delta
+    # dx[np.abs(dx) < 1e-15] = 1.e-8
+    # alphas = np.zeros(iterations)
+    # oneminusI_right = np.zeros(iterations)
+    # oneminusI_left = np.zeros(iterations)
+    # oneminusI_centered = np.zeros(iterations)
+    # print(" Alpha        | |1-Iright|   | |1-Icent.|   | |1-Ileft|    |")
+    # for i in range(iterations):
+        
+    #     alpha = 2**(-i)
+    #     alphas[i] = alpha
+        
+    #     # Compute "right" cost
+    #     control.x[:] = control.x0 + alpha * dx
+    #     cost_right = dassflow1d.calc_cost(model, control, obs)
+        
+    #     # Compute "left" cost
+    #     control.x[:] = control.x0 - alpha * dx
+    #     cost_left = dassflow1d.calc_cost(model, control, obs)
+        
+    #     # Compute left, centered and right |1-I|
+    #     oneminusI_right[i] = np.abs(1.0 - (cost_right - cost) / (alpha * np.dot(grad, dx)))
+    #     oneminusI_left[i] = np.abs(1.0 - (cost - cost_left) / (alpha * np.dot(grad, dx)))
+    #     oneminusI_centered[i] = np.abs(1.0 - (cost_right - cost_left) / (2.0 * alpha * np.dot(grad, dx)))
+    #     print(" %12.5e | %12.5e | %12.5e | %12.5e |" % (alpha, oneminusI_right[i], oneminusI_centered[i], oneminusI_left[i]))
+        
+    # plt.plot(alphas, oneminusI_right, 'b-', label="right")
+    # plt.plot(alphas, oneminusI_left, 'r-', label="left")
+    # plt.plot(alphas, oneminusI_centered, 'g-', label="centered")
+    # plt.xlabel(r"$\alpha$")
+    # plt.ylabel(r"$\left|1-I_\alpha \right|$")
+    # plt.loglog()
+    # plt.legend()
+    # plt.show()
+    print(res)
+    
+
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser("Run a Dassflow-1D case")
@@ -520,3 +691,8 @@ if __name__ == "__main__":
 
         # Gradient test
         run_gradient_test(config)
+
+    elif args.run_type == "optim":
+
+        # Gradient test
+        run_optim(config)
