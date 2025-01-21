@@ -64,8 +64,7 @@ def run_steady():
     print("=" * 80)
     print("Run steady simulation")
     print("=" * 80)
-    # Run time loop
-    model.steady_state()
+    model.run_steady()
     print("")
     
     #------------------------------------------------------------------------------------------------------------------

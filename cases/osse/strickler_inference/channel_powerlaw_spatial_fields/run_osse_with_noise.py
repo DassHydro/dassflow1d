@@ -25,18 +25,17 @@ def plot_control(ite_x, x_target):
     # Create figure
     fig, axes = plt.subplots(3, 1, sharex=True)
 
-    # Make subplots of KLOB (Left Overbank), KMC (Main Channel) and KROB (Right Overbank) w.r.t iterations 
-    labels = ["KLOB", "KMC", "KROB"]
+    # Make subplots of patches w.r.t iterations 
     for i in range(0, 3):
         axes[i].plot(np.arange(1, len(ite_x)+1), np.ones(len(ite_x)) * x_target[i], "r--", label="target")
-        axes[i].plot(np.arange(1, len(ite_x)+1), ite_x, "b-", label="infered")
-        axes[i].set_ylabel(labels[i])
+        axes[i].plot(np.arange(1, len(ite_x)+1), [x[i] for x in ite_x], "b-", label="infered")
+        axes[i].set_ylabel("patch %i" % (i+1))
         axes[i].xaxis.set_major_locator(MaxNLocator(integer=True))
     axes[2].set_xlabel("iterations")
     axes[2].legend()
         
     # Save plot to file
-    plt.savefig("plot/x_with_noise.png")
+    plt.savefig("plot/x_without_noise.png")
     plt.close(plt.gcf())
 
 
@@ -49,7 +48,7 @@ def plot_cost(ite_cost):
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
         
     # Save plot to file
-    plt.savefig("plot/cost_with_noise.png")
+    plt.savefig("plot/cost_without_noise.png")
     plt.close(plt.gcf())
 
 
@@ -116,9 +115,10 @@ def run_osse():
     # Read mesh
     mesh = dassflow1d.read_mesh("mesh.geo")
     # Set strickler type (Debord formula)
-    mesh.set_strickler_type("Debord")
+    mesh.set_strickler_type("powerlaw_h")
     # Set uniform parameters for Strickler
-    mesh.set_strickler_fields_segment([[10.0], [20.0], [10.0]])
+    mesh.set_strickler_spatial_fields(0, [1000.0, 2000.0, 3000.0], [[20.0, 23.0, 24.0], [0.0, 0.0, 0.0]], "constant")
+    #mesh.set_strickler_fields_segment([[10.0], [20.0], [10.0]])
     # Retrieve curvilinear abscissae for plots
     xs_mesh = mesh.get_segment_field(iseg=0, field="x")
     
@@ -179,13 +179,12 @@ def run_osse():
     # Init control for minimization
     control = m_control.Control()
     # Add strickler parameters in control
-    control.add_strickler_in_control(model, mesh)
+    control.add_strickler_component_in_control(model, mesh, 0)
     # Copy current control (values used for the generation of observations) to x_target (for plots)
     x_target = control.x.copy()
     # Set prior values
-    control.x0[control.get_item_slice(0)] = 15.0
-    control.x0[control.get_item_slice(1)] = 25.0
-    control.x0[control.get_item_slice(2)] = 15.0
+    control.x0[control.get_item_slice(0)] = 20.0
+    #control.x0[control.get_item_slice(1)] = 0.0
     # Copy prior control to x_prior (for plots)
     x_prior = control.x0.copy()
     # Copy prior control to current control

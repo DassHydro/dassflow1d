@@ -299,7 +299,7 @@ module m_sw_mono
             type(Unknowns), intent(inout) :: dof
             integer(ip) :: status
         end subroutine
-	subroutine implicit_diffusive_wave(mdl, msh, large_grid, imp, dof, status)
+	    subroutine implicit_diffusive_wave(mdl, msh, large_grid, imp, dof, status)
             import ip
             import ImplicitMatrix
             import Mesh
@@ -1178,6 +1178,17 @@ module m_sw_mono
         call time_loop(mdl, obs)
         
     end subroutine
+
+
+    subroutine generate_osse_observations(mdl, obs)
+        implicit none
+        type(Model), intent(inout) :: mdl
+        type(Observations), intent(inout), optional :: obs
+        
+        call generate_observations(mdl, obs)
+
+    end subroutine
+
     
     
     subroutine model_finalise(mdl)

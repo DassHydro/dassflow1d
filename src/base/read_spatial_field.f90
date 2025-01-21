@@ -54,7 +54,7 @@
 !> \brief This file includes the routine for reading spatial fields from a file
 
 !> Read a spatial field from a file
-subroutine read_spatial_field(msh, filename)
+subroutine read_spatial_field_from_file(msh, filename)
     use m_common
     use m_mesh, only: Mesh
     use m_mesh, only: SpatialField

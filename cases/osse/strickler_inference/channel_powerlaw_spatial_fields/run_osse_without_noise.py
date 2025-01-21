@@ -167,7 +167,7 @@ def run_osse():
     # Set observations at every cross-section at regular timestep
     obs = m_obs.all_observed(np.linspace(10800.0, 864000, 800, endpoint=True), mesh)
     # Run direct model to generate observations
-    model.generate_observations(obs)
+    model.generate_osse_observations(obs)
     print("")
 
     #------------------------------------------------------------------------------------------------------------------

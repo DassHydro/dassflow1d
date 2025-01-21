@@ -77,8 +77,7 @@ def run_unsteady():
     print("=" * 80)
     print("Run unsteady simulation")
     print("=" * 80)
-    # Run time loop
-    model.time_loop()
+    model.run_unsteady()
     print("")
 
     #------------------------------------------------------------------------------------------------------------------

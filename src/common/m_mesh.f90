@@ -435,15 +435,16 @@ module m_mesh
     end interface
 
     ! Interfaces to routines defined in base/read_spatial_field.f90
-    interface
-        subroutine read_spatial_field(msh, filename)
-            import Mesh
-            import rp
-            implicit none
-            type(Mesh), intent(inout) :: msh
-            character(len=*), intent(in) :: filename
-        end subroutine
-    end interface
+    ! interface
+    !     subroutine read_spatial_field(msh, filename)
+    !         import Mesh
+    !         import rp
+    !         implicit none
+    !         type(Mesh), intent(inout) :: msh
+    !         character(len=*), intent(in) :: filename
+    !         call read_spatial_field_from_file(msh, filename)
+    !     end subroutine
+    ! end interface
 
     ! Interfaces to routines defined in base/apply_bathy_field.f90
     interface
@@ -2350,6 +2351,14 @@ module m_mesh
 #endif
         end if
         call apply_strickler_fields(msh)
+    end subroutine
+
+
+    subroutine read_spatial_field(msh, filename)
+        implicit none
+        type(Mesh), intent(inout) :: msh
+        character(len=*), intent(in) :: filename
+        call read_spatial_field_from_file(msh, filename)
     end subroutine
 
 
