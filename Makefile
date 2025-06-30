@@ -171,8 +171,8 @@ endif
 ifeq ($(ADJOINT),1)
   CPP_ADJ = -DUSE_ADJ
   ifeq ($(shell which tapenade),)
-     TAPENADE_VERSION=
-     TAPENADE_DIR=
+     TAPENADE_VERSION=3.16
+     TAPENADE_DIR=libs/tapenade_3.16
   else
     TAPENADE_VERSION=$(shell tapenade --version | head -1 | cut -d' ' -f2)
     TAPENADE_VERSION_MAJOR=$(shell tapenade --version | head -1 | cut -d' ' -f2 | cut -d'.' -f1)
@@ -562,6 +562,18 @@ build/obj: build
 build/tap: build
 	mkdir -p build/tap
 	
+build/bin:
+	mkdir -p build/bin
+
+build/bin/%.py: tools/%.py build/bin
+	@echo "================================================================================"
+	cp $< $@
+
+build/bin/%.sh: tools/%.sh build/bin
+	@echo "================================================================================"
+	cp $< $@
+	chmod +x $@
+	
 build/api:
 	mkdir -p build/api
 
@@ -763,6 +775,9 @@ UTILS_PY = ./build/api/dassflow1d/utils/__init__.py \
            ./build/api/dassflow1d/utils/sge_rivernodes_observations.py \
            ./build/api/dassflow1d/utils/stdout_utils.py
 
+TOOLS = ./build/bin/mesh_builder.py \
+        ./build/bin/dassflow1d_mesh_builder.sh
+
 WRAPPED_OBJ = $(patsubst ./build/obj/%.o, ../obj/%.o, $(OBJ_PY))
 
 build/api/env.sh:
@@ -794,6 +809,8 @@ build/api/%.f90: src/sw_mono/%.f90
 
 
 copy_python_utils: $(UTILS_PY)
+
+copy_tools: $(TOOLS)
 
 build/api/_dassflow1d.so: build/api/dassflow1d \
                           build/obj \

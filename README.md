@@ -106,7 +106,7 @@ export PATH=$PATH:$"tapenade_dir"
 To try and test your DassFlow1D installation, you can try to run a test case by entering the following commands in your terminal (in your repository directory):
 ````
 conda activate dassflow-1d
-. build/api/env.sh
+. build/env.sh
 cd cases/osse/strickler_inference/channel_powerlaw_spatial_fields
 python run_osse_without_noise.py
 ````

@@ -1,0 +1,254 @@
+subroutine pushreal8:
+  external:
+  shape:(common /adstack/[0,*[, param 1)
+  type:(arrayType(modifiedType(modifiers(intCst 8), float()),
+                  dimColons(dimColon(none(),none()))),
+        modifiedType(modifiers(intCst 8), float()))
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+  deps: (1, 1,
+         id)
+
+subroutine popreal8:
+  external:
+  shape:(common /adstack/[0,*[, param 1)
+  type:(arrayType(modifiedType(modifiers(intCst 8), float()),
+                  dimColons(dimColon(none(),none()))),
+        modifiedType(modifiers(intCst 8), float()))
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+  deps: (1, 0,
+         1, 0)
+
+
+subroutine pushreal8array:
+  external:
+  shape:(common /adstack/[0,*[, param 1, param 2)
+  type:(arrayType(modifiedType(modifiers(intCst 8), float()),
+                  dimColons(dimColon(none(),none()))),
+        arrayType(modifiedType(modifiers(intCst 8), float()),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1, 1)
+  NotReadThenWritten: (0, 0, 0)
+  ReadThenWritten: (1, 0, 0)
+  deps: (1, 1, 1,
+         id,
+         id)
+
+subroutine popreal8array:
+  external:
+  shape:(common /adstack/[0,*[, param 1, param 2)
+  type:(arrayType(modifiedType(modifiers(intCst 8), float()),
+                  dimColons(dimColon(none(),none()))),
+        arrayType(modifiedType(modifiers(intCst 8), float()),
+                  dimColons(dimColon(none(),none()))),   
+        integer())
+  ReadNotWritten: (0, 0, 1)
+  NotReadThenWritten: (0, 1, 0)
+  ReadThenWritten: (1, 0, 0)
+  deps: (1, 0, 1,
+         id,
+         1, 0, 1)
+
+subroutine pushinteger4:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popinteger4:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol1b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol1b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol2b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol2b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol3b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol3b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol4b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol4b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol5b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol5b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol6b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol6b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol7b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol7b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol8b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol8b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)
+
+subroutine pushcontrol9b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 1)
+  NotReadThenWritten: (0, 0)
+  ReadThenWritten: (1, 0)
+
+subroutine popcontrol9b:
+  external:
+  shape:(common /adstackpassive/[0,*[, param 1)
+  type:(arrayType(integer(),
+                  dimColons(dimColon(none(),none()))),
+        integer())
+  ReadNotWritten: (0, 0)
+  NotReadThenWritten: (0, 1)
+  ReadThenWritten: (1, 0)

@@ -800,3 +800,15 @@ print $out "export PYTHONPATH=\$DIR:\$PYTHONPATH\n";
 
 close($out);
 
+
+#-----------------------------------------------------------------------------------------------------------------------
+open($out, ">../env.sh"); # ouvrir le fichier en mode "ecriture"  (écrasement du fichier)
+
+print $out "FILEPATH=`realpath \${BASH_SOURCE[0]}`\n";
+print $out "DIR=`dirname \$FILEPATH`\n";
+print $out "export DASSFLOW1D_BINDIR=\$DIR/bin\n";
+print $out "export PYTHONPATH=\$DIR/bin:\$DIR/api:\$PYTHONPATH\n";
+print $out "export PATH=\$DIR/bin:\$PATH\n";
+
+close($out);
+
