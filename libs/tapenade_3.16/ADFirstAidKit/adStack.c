@@ -43,7 +43,7 @@
 #define BLOCK_SIZE 65536
 
 /* The max number of Block's allowed in main memory */
-#define MAX_SPACES 4000
+#define MAX_SPACES 24000
 
 /**************** Data structures and globals ******************/
 
@@ -548,6 +548,8 @@ void checkForward() {
                space->rank, stateNames[space->state], space->rank) ;
       }
 #endif
+      printf("[FWD] store (%02i %s) into file tapStack%05i\n", 
+               space->rank, stateNames[space->state], space->rank) ;
       storeInFile(space) ;
       space->state = STORED ;
   }
@@ -564,6 +566,8 @@ void checkBackward() {
                  space->rank, stateNames[space->state], space->rank) ;
         }
 #endif
+        printf("[BWD] store (%02i %s) into file tapStack%05i\n", 
+                space->rank, stateNames[space->state], space->rank) ;
         storeInFile(space) ;
       }
       space->rank = curStack->rank ;

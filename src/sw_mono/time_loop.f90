@@ -62,13 +62,35 @@ subroutine time_loop(mdl, obs)
 !     use m_sw_mono, only: ImplicitMatrix
     use m_sw_mono, only: Model
     use m_sw_mono, only: reset_probes
+    ! use m_sw_mono, only: checkpointed_partial_timeloop
 !     use m_sw_mono, only: Unknowns
     use m_numeric
     use m_obs
 #ifndef CPP_ADJ
     use m_stdout
 #endif
+
     implicit none
+
+
+#ifdef TIMELOOP_CHECKPOINTING
+    interface
+        subroutine checkpointed_partial_timeloop(mdl, nt, obs)
+            use m_common
+            use m_sw_mono, only: Model
+            use m_obs
+            implicit none
+            type(Model), intent(inout) :: mdl
+            integer(ip), intent(inout) :: nt
+#ifndef CPP_ADJ
+            type(Observations), intent(inout), optional :: obs
+#else
+            type(Observations), intent(inout) :: obs
+#endif
+        end subroutine
+    end interface
+#endif
+
     !=ARGUMENTS========================================================================================================!
     !> @param mdl Model
     TYPE(Model), intent(inout) :: mdl
@@ -224,6 +246,19 @@ subroutine time_loop(mdl, obs)
     nt = 0
     ! do while(mdl%tc < mdl%te - 0.0000001)
     do while(mdl%tc < mdl%te)
+
+#ifdef TIMELOOP_CHECKPOINTING
+
+        call checkpointed_partial_timeloop(mdl, nt, obs)
+
+        if (mdl%status /= 0) then
+            if (.not. mdl%disable_stdout) then
+                print *, "exit:status=", mdl%status
+            end if
+            return
+        end if
+
+#else
    
         ! Advance time
         nt = nt + 1
@@ -289,6 +324,8 @@ subroutine time_loop(mdl, obs)
         end if
 #endif
 
+#endif
+
     end do
     
 #ifndef CPP_ADJ
@@ -301,3 +338,138 @@ subroutine time_loop(mdl, obs)
    
 end subroutine time_loop
 
+#ifdef TIMELOOP_CHECKPOINTING
+!> \brief TODO
+subroutine checkpointed_partial_timeloop(mdl, nt, obs)
+    use m_common
+    ! use m_mesh
+    use m_sw_mono, only: Model
+    ! use m_sw_mono, only: reset_probes
+    ! use m_numeric
+    use m_obs
+#ifndef CPP_ADJ
+    use m_stdout
+#endif
+    implicit none
+    !=ARGUMENTS========================================================================================================!
+    !> @param mdl Model
+    TYPE(Model), intent(inout) :: mdl
+    !> @param Number of computed timesteps
+    integer(ip), intent(inout) :: nt
+#ifndef CPP_ADJ
+    !> @param obs Observations
+    type(Observations), intent(inout), optional :: obs
+#else
+    !> @param obs Observations
+    type(Observations), intent(inout) :: obs
+#endif
+    !=LOCAL VARIABLES==================================================================================================!
+    ! Iterator
+    integer(ip) :: i
+    ! Index of estimation data
+    integer(ip) :: idata
+    ! Index of observation time
+    integer(ip) :: iobs
+    ! Index of result
+    integer(ip) :: iout
+    ! Index of station
+    integer(ip) :: ista
+    ! Index of cross-section
+    integer(ip) :: ics
+    ! Number of results
+    integer(ip) :: nout
+    ! Number of partial timesteps
+    integer(ip) :: partial_nt
+    ! Status code
+    integer(ip) :: status
+    ! Inverse of timestep
+    real(rp) :: ddt
+    ! Mean height
+    real(rp) :: H_mean
+    ! Multiplier
+    real(rp) :: mult
+    ! Width
+    real(rp) :: w
+    ! Mean width
+    real(rp) :: w_mean
+#ifndef CPP_ADJ
+    ! Temporary string
+    character(len=32) :: tmp
+#endif
+
+    partial_nt = 1
+
+    do while(mdl%tc < mdl%te .and. partial_nt < mdl%checkpoint_nt)
+
+        ! Advance time
+        partial_nt = partial_nt + 1
+        nt = nt + 1
+        mdl%tc = mdl%tc + mdl%dt
+#ifndef CPP_ADJ
+        if (int((mdl%tc - mdl%dt) / mdl%dtout) < int(mdl%tc / mdl%dtout)) then
+            if (mdl%print_progress) then
+                call print_stdout('dt', (/nt/), (/mdl%tc, mdl%te, (mdl%tc - mdl%ts) / (mdl%te - mdl%ts), mdl%dt/))
+            end if
+        end if
+#endif
+        
+        ! Solve timestep
+        if (mdl%scheme == "preissmann") then
+            status = mdl%status
+            call preissmann_timestep(mdl, mdl%msh, mdl%imp, mdl%dof, status)
+            mdl%status = status
+        else if (mdl%scheme == "implicit_diffusive_wave") then
+            call implicit_diffusive_wave(mdl, mdl%msh, mdl%large_grid, mdl%imp, mdl%dof, mdl%status)
+        end if
+
+#ifndef CPP_ADJ
+        if (mdl%status /= 0 .and. (.not. mdl%disable_stdout)) then
+            print *, "exit:status=", mdl%status
+            return
+        end if
+#endif
+        
+        ! Compute estimations
+#ifndef CPP_ADJ
+        if (present(obs)) then
+#endif
+            call calc_estimations(mdl, obs)
+#ifndef CPP_ADJ
+        end if
+#endif
+        
+        ! Update probes
+#ifndef CPP_ADJ
+        call update_probes(mdl)
+#endif
+        
+        ! Update internal counters
+#ifndef CPP_ADJ
+        call update_internal_counters(mdl)
+#endif
+
+        ! Store results
+#ifndef CPP_ADJ
+        if (mdl%dtout > 0.0) then
+        
+            if (int((mdl%tc - mdl%dt) / mdl%dtout) < int(mdl%tc / mdl%dtout)) then
+                iout = int((mdl%tc - mdl%ts) / mdl%dtout)
+                mdl%res%t(iout) = mdl%tc
+                mdl%res%h(:, iout) = mdl%dof%h(:)
+                mdl%res%q(:, iout) = mdl%dof%q(:)
+                mdl%res%a(:, iout) = mdl%dof%a(:)
+            
+                if (len_trim(mdl%output_file) > 0) then
+                    call write_results(mdl, iout)
+                end if
+                
+            end if
+            
+        end if
+#endif
+
+    end do
+   
+end subroutine checkpointed_partial_timeloop
+
+#endif

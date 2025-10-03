@@ -244,8 +244,11 @@ module m_sw_mono
         character(len=128) :: output_file
         !> Computational scheme
         character(len=32) :: scheme
-        !>scale for the implicit diffusive wave
+        !> Scale for the implicit diffusive wave
         character(len=16) :: scale_idw
+        !> Number of iterations of checkpointed partial time loop
+        integer(ip) :: checkpoint_nt
+
         !> Bounday conditions
         type(BoundaryCondition), dimension(:), allocatable :: bc
         !> Number of inflow conditions
@@ -334,6 +337,17 @@ module m_sw_mono
             type(Model), intent(inout) :: mdl
             type(Observations), intent(inout), optional :: obs
         end subroutine
+! #ifdef TIMELOOP_CHECKPOINTING
+!         subroutine checkpointed_partial_timeloop(mdl, nt, obs)
+!             import ip
+!             import Model
+!             import Observations
+!             implicit none
+!             type(Model), intent(inout) :: mdl
+!             integer(ip), intent(inout) :: nt
+!             type(Observations), intent(inout), optional :: obs
+!         end subroutine
+! #endif
 !         subroutine free_surface_slopes_segment(mdl, iseg, h, slopes)
 !             import ip
 !             import rp
@@ -804,6 +818,7 @@ module m_sw_mono
 !         mdl%alpha_reg = 0.0
         mdl%gamma_reg = -1.0
         mdl%scale_idw = "low"
+        mdl%checkpoint_nt = 20000
         
         ! Allocate unknowns
         call unknowns_initialise(mdl%dof, mdl%msh)

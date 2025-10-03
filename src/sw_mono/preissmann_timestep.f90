@@ -335,12 +335,12 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
                     kcL(1) = sqrt(1.0_rp + acL(1) / acL(2) * (1.0_rp - Ad**2)) * kcL(1)
                     kcL(2) = Ad * kcL(2)
                 else
-! #ifndef CPP_ADJ
+#ifndef CPP_ADJ
 !                 print *, "[ SIMULATION FAILED ] Debord operand is negative"
-! #endif
                 open(199, file="error.txt")
-                write(199, '(2(A,I6))') "Negative Debord operand detected on segment ", iseg-1, ", cross-section ", ics
+                write(199, '(2(A,I6))') "Negative Debord operand detected on segment ", iseg-1, ", cross-section ", ie
                 close(199)
+#endif
 
                 status = 22
                 return

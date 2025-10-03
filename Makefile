@@ -83,7 +83,7 @@ else
 
   ifeq ($(OPTIM),0)
 
-    export CFLAGS = -cpp -g -finit-real=nan -fbounds-check -ffree-line-length-0 -I./build/obj -J./build/obj -ffpe-trap=invalid,zero,overflow,underflow -fPIC -fallow-argument-mismatch
+    export CFLAGS = -cpp -g -finit-real=nan -fbounds-check -ffree-line-length-0 -I./build/obj -J./build/obj -ffpe-trap=invalid,zero,overflow,underflow -fPIC -fallow-argument-mismatch -fsignaling-nans
     export CFLAGS_USER_DATA = -g -fbounds-check -ffree-line-length-0 -I./build/obj -ffpe-trap=invalid,zero,overflow,underflow -fPIC -fallow-argument-mismatch
     export FFLAGS = -fPIC -fallow-argument-mismatch
 
@@ -96,6 +96,7 @@ else
   endif
 
 endif
+
 
 export CLIBS =
 export FLIBS =
@@ -216,6 +217,10 @@ ifeq ($(MINMETHOD),1)
     OBJS_MINMETHOD=obj/m1qn3.o\
                    obj/ddot.o
   endif
+endif
+
+ifeq ($(CHECKPOINTING),1)
+    CPP_MODEL += -DTIMELOOP_CHECKPOINTING
 endif
 
 ifeq ($(MINMETHOD),2)
@@ -348,7 +353,7 @@ FILES_TAP = build/tap/m_common.f90 \
 #======================================================================================================================#
 #
 #======================================================================================================================#
-all: build/api/_dassflow1d.so
+all: build/api/_dassflow1d.so copy_tools build/bin/dassflow1d_cli.py
 rebuild_all: cleanall generate_adjoint all
 swot_discharge_algorithm_solver: ../swot_discharge_algorithm_dassflow1d/bin/dassflow1d_solver
 doc_dev:
@@ -564,6 +569,10 @@ build/tap: build
 	
 build/bin:
 	mkdir -p build/bin
+
+build/bin/dassflow1d_cli.py: src/run_dassflow1d.py build/bin
+	@echo "================================================================================"
+	cp $< $@
 
 build/bin/%.py: tools/%.py build/bin
 	@echo "================================================================================"
