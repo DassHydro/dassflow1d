@@ -284,7 +284,14 @@ def load_control(config, model):
     becm_lengths = []
     for item_config in config["control"]:
         
-        if item_config["variable"] == "K":
+        if item_config["variable"] == "Q" or item_config["variable"] == "Qin":
+
+            # Add Upstream bc in control
+            for ibc in range(0, len(model.bc)):
+                if model.bc[ibc].id == "discharge":
+                    control.add_bc_in_control(model, ibc)
+
+        elif item_config["variable"] == "K":
 
             # Check that Strickler type is constant
             if model.msh.strickler_type_code != m_mesh.strickler_type_constant:
