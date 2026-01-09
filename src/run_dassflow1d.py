@@ -12,6 +12,16 @@ import dassflow1d.m_mesh as m_mesh
 import dassflow1d.m_sw_mono as m_sw_mono
 import dassflow1d.m_obs as m_obs
 
+def auto_filepath(path, candidate_dirs):
+
+    if isinstance(candidate_dirs, str):
+        candidate_dirs = [candidate_dirs]
+    for candidate_dir in candidate_dirs:
+        candidate_file = os.path.join(candidate_dir, path)
+        if os.path.isfile(candidate_file):
+            return candidate_file
+    return path
+
 
 def load_configuration(fname):
     
@@ -32,7 +42,19 @@ def load_configuration(fname):
 
 
 def load_timeseries(fname, datestart=None):
-    
+
+    # # Try with internal format
+    # with open(fname, "r") as fp:
+    #     content = fp.readlines()
+
+    # # Count number of lines with sharp at the beginning
+    # row_index = 0
+    # while content[row_index].rstrip()[0:1] == "#":
+    #     row_index += 1
+    #     if row_index >= len(content):
+    #         break
+    # print("row_index =", row_index)
+     
     if os.path.splitext(fname)[1] == ".csv":
         
         if datestart is None:
@@ -42,7 +64,7 @@ def load_timeseries(fname, datestart=None):
         
         else:
             
-            data = pd.read_csv(fname, sep=";", parse_dates=[0])
+            data = pd.read_csv(fname, sep=",", parse_dates={"datetime": ["date", "time"]})
             t = ((data.iloc[:, 0].dt.tz_localize(None) - np.datetime64(datestart)) / np.timedelta64(1, "s")).values
             
             return t, data.iloc[:, 1].values
@@ -71,7 +93,7 @@ def create_model(config):
     print("=" * 80)
     
     # Load mesh
-    mesh_fname = config["model"]["mesh_file"]
+    mesh_fname = auto_filepath(config["model"]["mesh_file"], "input/static_data")
     mesh = dassflow1d.read_mesh(mesh_fname)
     
     # Resample mesh if requested
@@ -105,8 +127,8 @@ def create_model(config):
     else:
         raise RuntimeError("wrong type of strickler values : %s" % config["model"]["strickler_values"]["type"])
 
-    print(mesh.strickler_type_code)
-    print(mesh.cs[2].strickler_params)
+    # print(mesh.strickler_type_code)
+    # print(mesh.cs[2].strickler_params)
 
     # Create model from mesh
     model = m_sw_mono.Model(mesh)
@@ -132,6 +154,21 @@ def create_model(config):
             # print("date_start=", date_start)
             t, y = load_timeseries(bc_config["timeseries_file"], datestart=date_start)
             model.bc[ibc].set_timeseries(t, y)
+        elif "provider" in bc_config:
+            candidate_file = auto_filepath("BC%04i.csv" % ibc, "dynamic_data")
+            if os.path.isfile(candidate_file):
+                t, y = load_timeseries(candidate_file, datestart=date_start)
+                model.bc[ibc].set_timeseries(t, y)
+            elif "code_station" in bc_config:
+                bc_file = "%s_%s.csv" % (bc_config["id"], bc_config["code_station"])
+                candidate_file = auto_filepath(bc_file, "dynamic_data")
+                if os.path.isfile(candidate_file):
+                    t, y = load_timeseries(candidate_file, datestart=date_start)
+                    model.bc[ibc].set_timeseries(t, y)
+                else:
+                    raise RuntimeError("Unable to load values for boundary condition %i" % ibc)
+            else:
+                raise RuntimeError("Unable to load values for boundary condition %i" % ibc)
     
     # Setup inflow conditions
     if "inflow_conditions" in config["model"]:
@@ -143,6 +180,7 @@ def create_model(config):
                 raise RuntimeError("'coords' must be specified for inflow conditions")
             if "timeseries_file" in ic_config:
                 t, y = load_timeseries(ic_config["timeseries_file"], datestart=date_start)
+            # TODO ipmlement auto filenames as for BC (see)
             else:
                 raise RuntimeError("'timeseries_file' must be specified for inflow conditions")
             model.add_inflow_condition(iseg=iseg, coords=coords, t=t, q=y)
@@ -163,7 +201,12 @@ def create_model(config):
         model.te = duration
         
     # Set computation timestep
-    model.dt = config["model"]["timestep"]
+    if "timestep" in config["model"]:
+        model.dt = config["model"]["timestep"]
+    elif "dt" in config["model"]:
+        model.dt = config["model"]["dt"]
+    else:
+        model.dt = 300
     
     # Set output timestep
     model.dtout = config["model"]["output_timestep"]
@@ -397,10 +440,11 @@ def run_direct(config, display_internal_counters=False):
     # Create model
     model = create_model(config)
     print(model)
-    print(model.bc[1].ts.t)
-    print(model.bc[1].ts.y)
-    print(model.msh.strickler_type)
-    print(model.msh.cs[2].strickler_params)
+    print("")
+    # print(model.bc[1].ts.t)
+    # print(model.bc[1].ts.y)
+    # print(model.msh.strickler_type)
+    # print(model.msh.cs[2].strickler_params)
     
     # Run direct
     print("=" * 80)
@@ -409,13 +453,13 @@ def run_direct(config, display_internal_counters=False):
     
     # Run direct model
     model.run_unsteady()
-    print(model.status)
-    print(model.res.h[:, 0])
-    bathy = model.msh.get_segment_field(0, "bathy", base_cs=False)
-    x = model.msh.get_segment_field(0, "x", base_cs=False)
-    plt.plot(x, bathy, "k-")
-    plt.plot(x, bathy+model.res.h[2:-2, 0], "b-")
-    plt.show()
+    # print(model.status)
+    # print(model.res.h[:, 0])
+    # bathy = model.msh.get_segment_field(0, "bathy", base_cs=False)
+    # x = model.msh.get_segment_field(0, "x", base_cs=False)
+    # plt.plot(x, bathy, "k-")
+    # plt.plot(x, bathy+model.res.h[2:-2, 0], "b-")
+    # plt.show()
     if display_internal_counters:
         print("- Number of overbank flow occurences: %i" % model.internal_counters[0])
         print("  - Left overbank flow occurences : %i" % model.internal_counters[1])
