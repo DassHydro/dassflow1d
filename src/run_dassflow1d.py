@@ -1,4 +1,5 @@
 import argparse
+import geopandas as gpd
 import json
 import os
 import matplotlib.pyplot as plt
@@ -72,6 +73,35 @@ def load_timeseries(fname, datestart=None):
     else:
         
         raise RuntimeError("Timeseries file must be a CSV file")
+
+
+def load_provider_timeseries(fname, datestart=None):
+
+    float_keys = ["REFERENCE LONGITUDE", "REFERENCE_LATITUDE"]
+
+
+    with open(fname, "r") as fp:
+        content = fp.readlines()
+
+    # Read metadata
+    metadata = {}
+    row_index = 0
+    while content[row_index].rstrip()[0:1] == "#":
+        row_content = content[row_index].rstrip()[1:]
+        if "::" in row_content:
+            key, value = row_content.split("::")
+            if key in float_keys:
+                value = float(value)
+            metadata[key] = value
+        row_index += 1
+        if row_index >= len(content):
+            break
+    print("row_index =", row_index)
+     
+    data = pd.read_csv(fname, sep="\s+", skiprows=row_index, header=None, parse_dates={"datetime": [0,1]})
+    t = ((data.loc[:, "datetime"].dt.tz_localize(None) - np.datetime64(datestart)) / np.timedelta64(1, "s")).values
+    
+    return t, data.loc[:, 2].values, metadata
 
 
 def create_model(config):
@@ -155,13 +185,13 @@ def create_model(config):
             t, y = load_timeseries(bc_config["timeseries_file"], datestart=date_start)
             model.bc[ibc].set_timeseries(t, y)
         elif "provider" in bc_config:
-            candidate_file = auto_filepath("BC%04i.csv" % ibc, "dynamic_data")
+            candidate_file = auto_filepath("BC%04i.csv" % ibc, "input/dynamic_data")
             if os.path.isfile(candidate_file):
                 t, y = load_timeseries(candidate_file, datestart=date_start)
                 model.bc[ibc].set_timeseries(t, y)
             elif "code_station" in bc_config:
                 bc_file = "%s_%s.csv" % (bc_config["id"], bc_config["code_station"])
-                candidate_file = auto_filepath(bc_file, "dynamic_data")
+                candidate_file = auto_filepath(bc_file, "input/dynamic_data")
                 if os.path.isfile(candidate_file):
                     t, y = load_timeseries(candidate_file, datestart=date_start)
                     model.bc[ibc].set_timeseries(t, y)
@@ -270,25 +300,111 @@ def load_observations(config, model):
         date_start = config["model"]["date_start"]
     else:
         date_start = None
+
+    # Count number of stations
+    nobs = 0
+    for iobs, obs_config in enumerate(config["observations"]):
+        if "timeseries_file" in obs_config:
+            nobs += 1
+        elif "provider" in obs_config:
+            if obs_config["provider"] == "hydroweb":
+                # TODO
+                raise NotImplementedError("Listing of Hydroweb observations files is not implemented yet")
+            elif obs_config["provider"] == "schapi":
+                if "code_stations" in obs_config:
+                    nobs += len(obs_config["code_stations"])
+                else:
+                    candidates_files = os.path.join("input", "assim_data", "schapi_*.csv")
+                    nobs += len(candidates_files)
+
+                # raise NotImplementedError("Listing of SCHAPI observations files is not implemented yet")
+            elif obs_config["provider"] == "icesat2":
+                # TODO
+                raise NotImplementedError("Listing of ICESat-2 observations files is not implemented yet")
+            else:
+                raise ValueError("Wrong provider: %s" % obs_config["provider"])
+        else:
+            raise ValueError("Unable to process observation %i. Either provide timeseries file or provider." % iobs)
+    print("- Number of stations: %i" % nobs)
     
     # Allocate observations object
-    nobs = len(config["observations"])
+    # nobs = len(config["observations"])
     obs = m_obs.Observations(nobs)
     
     # Setup Verdun-sur-Garonne station
+    ista = 0
     for iobs, obs_config in enumerate(config["observations"]):
         
         # Load timeseries
-        tobs, Hobs = load_timeseries(obs_config["timeseries_file"], datestart=date_start)
+        if "timeseries_file" in obs_config:
+
+            tobs, Hobs = load_timeseries(obs_config["timeseries_file"], datestart=date_start)
         
-        # Create array of observed H and W, restricted to the simulation window
-        Hobs = Hobs[tobs <= model.te]
-        tobs = tobs[tobs <= model.te]
-        HWobs = np.ones((2, Hobs.size)) * -1e+99
-        HWobs[0, :] = Hobs
-        
-        # Setup station
-        obs.stations[iobs].setup(model.msh, tobs, HWobs, indices=obs_config["index"])
+            # Create array of observed H and W, restricted to the simulation window
+            Hobs = Hobs[tobs <= model.te]
+            tobs = tobs[tobs <= model.te]
+            HWobs = np.ones((2, Hobs.size)) * -1e+99
+            HWobs[0, :] = Hobs
+            
+            # Setup station
+            obs.stations[iobs].setup(model.msh, tobs, HWobs, indices=obs_config["index"])
+            ista += 1
+
+        elif "provider" in obs_config:
+
+            # Load xs.shp file
+            if os.path.isfile("input/static_data/xs.shp"):
+                xs_metadata = gpd.read_file("input/static_data/xs.shp")
+                raise NotImplementedError("Findin cross-section index from xs.shp is not implemented yet.")
+            else:
+                #TODO put an error message
+                xs_index = 2
+
+
+            if obs_config["provider"] == "hydroweb":
+                # TODO
+                raise NotImplementedError("Listing of Hydroweb observations files is not implemented yet")
+            elif obs_config["provider"] == "schapi":
+                if "code_stations" in obs_config:
+                    obs_files = [os.path.join("input", "assim_data", "schapi", "schapi_%s.txt" % code) for code in obs_config["code_stations"]]
+                else:
+                    obs_files = os.path.join("input", "assim_data", "schapi", "schapi_*.txt")
+                for obs_file in obs_files:
+                    tobs, Hobs, metadata = load_provider_timeseries(obs_file, datestart=date_start)
+                    print(metadata)
+                    Hobs = Hobs[tobs <= model.te]
+                    tobs = tobs[tobs <= model.te]
+                    HWobs = np.ones((2, Hobs.size)) * -1e+99
+                    HWobs[0, :] = Hobs
+
+                    if len(tobs) == 0:
+                        raise RuntimeError("No valid observations found in file: %s" % obs_file)
+
+                    # Setup station
+                    obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
+                    ista += 1
+
+                # # TODO
+                # raise NotImplementedError("Listing of SCHAPI observations files is not implemented yet")
+            elif obs_config["provider"] == "icesat2":
+                # TODO
+                raise NotImplementedError("Listing of ICESat-2 observations files is not implemented yet")
+
+            # candidate_file = auto_filepath("%s_MBC%04i.csv" % ibc, "dynamic_data")
+            # if os.path.isfile(candidate_file):
+            #     t, y = load_timeseries(candidate_file, datestart=date_start)
+            #     model.bc[ibc].set_timeseries(t, y)
+            # elif "code_station" in bc_config:
+            #     bc_file = "%s_%s.csv" % (bc_config["id"], bc_config["code_station"])
+            #     candidate_file = auto_filepath(bc_file, "dynamic_data")
+            #     if os.path.isfile(candidate_file):
+            #         t, y = load_timeseries(candidate_file, datestart=date_start)
+            #         model.bc[ibc].set_timeseries(t, y)
+            #     else:
+            #         raise RuntimeError("Unable to load values for boundary condition %i" % ibc)
+            # else:
+            #     raise RuntimeError("Unable to load values for boundary condition %i" % ibc)
+
         
     print("")
     
