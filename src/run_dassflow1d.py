@@ -96,7 +96,6 @@ def load_provider_timeseries(fname, datestart=None):
         row_index += 1
         if row_index >= len(content):
             break
-    print("row_index =", row_index)
      
     data = pd.read_csv(fname, sep="\s+", skiprows=row_index, header=None, parse_dates={"datetime": [0,1]})
     t = ((data.loc[:, "datetime"].dt.tz_localize(None) - np.datetime64(datestart)) / np.timedelta64(1, "s")).values
@@ -357,8 +356,9 @@ def load_observations(config, model):
                 xs_metadata = gpd.read_file("input/static_data/xs.shp")
                 raise NotImplementedError("Findin cross-section index from xs.shp is not implemented yet.")
             else:
-                #TODO put an error message
-                xs_index = 2
+                xs_metadata = None
+                # #TODO put an error message
+                # xs_index = 2
 
 
             if obs_config["provider"] == "hydroweb":
@@ -371,7 +371,6 @@ def load_observations(config, model):
                     obs_files = os.path.join("input", "assim_data", "schapi", "schapi_*.txt")
                 for obs_file in obs_files:
                     tobs, Hobs, metadata = load_provider_timeseries(obs_file, datestart=date_start)
-                    print(metadata)
                     Hobs = Hobs[tobs <= model.te]
                     tobs = tobs[tobs <= model.te]
                     HWobs = np.ones((2, Hobs.size)) * -1e+99
@@ -381,7 +380,13 @@ def load_observations(config, model):
                         raise RuntimeError("No valid observations found in file: %s" % obs_file)
 
                     # Setup station
-                    obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
+                    if xs_metadata is not None:
+                        # TODO Find index using metadata
+                        obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
+                    else:
+                        x = metadata["REFERENCE LONGITUDE"]
+                        y = metadata["REFERENCE LATITUDE"]
+                        obs.stations[ista].setup(model.msh, tobs, HWobs, coords=[x, y])
                     ista += 1
 
                 # # TODO
