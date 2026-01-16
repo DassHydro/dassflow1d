@@ -263,7 +263,7 @@ subroutine time_loop(mdl, obs)
         ! Advance time
         nt = nt + 1
         mdl%tc = mdl%tc + mdl%dt
-        ! if (mdl%tc > mdl%te + 1e-12) mdl%tc = mdl%te
+        if (mdl%tc > mdl%te + 1e-12) mdl%tc = mdl%te
 #ifndef CPP_ADJ
         if (int((mdl%tc - mdl%dt) / mdl%dtout) < int(mdl%tc / mdl%dtout)) then
             if (mdl%print_progress) then
@@ -405,6 +405,7 @@ subroutine checkpointed_partial_timeloop(mdl, nt, obs)
         partial_nt = partial_nt + 1
         nt = nt + 1
         mdl%tc = mdl%tc + mdl%dt
+        if (mdl%tc > mdl%te + 1e-12) mdl%tc = mdl%te
 #ifndef CPP_ADJ
         if (int((mdl%tc - mdl%dt) / mdl%dtout) < int(mdl%tc / mdl%dtout)) then
             if (mdl%print_progress) then
