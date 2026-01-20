@@ -10,6 +10,8 @@ RUN mkdir -p /usr/share/man/man1
 RUN apt-get update
 RUN apt-get install -y build-essential gfortran g++ zlib1g-dev libblas-dev
 RUN apt-get install -y python3-pip cython3
+RUN apt search jre
+RUN apt-get install -y openjdk-21-jre-headless
 
 # Setup Python environment
 RUN pip3 install numpy==1.26.4
@@ -27,6 +29,7 @@ FROM stage1 as stage2
 RUN mkdir -p /mnt/rundir
 RUN mkdir -p /app/DassFlow1D_AQ
 RUN mkdir -p /app/DassFlow1D_AQ/build
+RUN mkdir -p /app/DassFlow1D_AQ/build/tap
 
 # Copy DassFlow-1D sources
 COPY ./src /app/DassFlow1D_AQ/src
@@ -36,13 +39,15 @@ COPY ./* /app/DassFlow1D_AQ/
 
 # Copy and setup TAPENADE
 ENV TAPENADE_HOME /app/DassFlow1D_AQ/libs/tapenade_3.16
+ENV PATH $TAPENADE_HOME/bin:$PATH
 
 # Compile DassFlow-1D and setup CLI
 WORKDIR /app/DassFlow1D_AQ
-RUN make print_params
+RUN make ADJOINT=1 OPTIM=1 print_params
 RUN make cleanlibs alllibs
-RUN make clean
-RUN make
+RUN make ADJOINT=1 clean
+RUN make ADJOINT=1 generate_adjoint
+RUN make ADJOINT=1 OPTIM=1
 COPY ./src/run_dassflow1d.py /app/DassFlow1D_AQ/bin/dassflow1d_cli.py
 
 ## Stage 3
