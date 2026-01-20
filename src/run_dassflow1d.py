@@ -362,13 +362,15 @@ def load_observations(config, model):
 
 
             if obs_config["provider"] == "hydroweb":
+                
                 # TODO
                 raise NotImplementedError("Listing of Hydroweb observations files is not implemented yet")
+            
             elif obs_config["provider"] == "schapi":
                 if "code_stations" in obs_config:
-                    obs_files = [os.path.join("input", "assim_data", "schapi", "schapi_%s.txt" % code) for code in obs_config["code_stations"]]
+                    obs_files = [os.path.join("/mnt/rundir/input", "assim_data", "schapi", "schapi_%s.txt" % code) for code in obs_config["code_stations"]]
                 else:
-                    obs_files = os.path.join("input", "assim_data", "schapi", "schapi_*.txt")
+                    obs_files = os.path.join("/mnt/rundir/input", "assim_data", "schapi", "schapi_*.txt")
                 for obs_file in obs_files:
                     tobs, Hobs, metadata = load_provider_timeseries(obs_file, datestart=date_start)
                     Hobs = Hobs[tobs <= model.te]
