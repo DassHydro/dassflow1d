@@ -131,7 +131,7 @@ def create_model(config):
     print("=" * 80)
     
     # Load mesh
-    mesh_fname = auto_filepath(config["model"]["mesh_file"], "input/static_data")
+    mesh_fname = auto_filepath(config["model"]["mesh_file"], "/mnt/run/input/static_data")
     mesh = dassflow1d.read_mesh(mesh_fname)
     
     # Resample mesh if requested
@@ -193,13 +193,13 @@ def create_model(config):
             t, y = load_timeseries(bc_config["timeseries_file"], datestart=date_start)
             model.bc[ibc].set_timeseries(t, y)
         elif "provider" in bc_config:
-            candidate_file = auto_filepath("BC%04i.csv" % ibc, "input/dynamic_data")
+            candidate_file = auto_filepath("BC%04i.csv" % ibc, "/mnt/rundir/input/dynamic_data")
             if os.path.isfile(candidate_file):
                 t, y = load_timeseries(candidate_file, datestart=date_start)
                 model.bc[ibc].set_timeseries(t, y)
             elif "code_station" in bc_config:
                 bc_file = "%s_%s.csv" % (bc_config["id"], bc_config["code_station"])
-                candidate_file = auto_filepath(bc_file, "input/dynamic_data")
+                candidate_file = auto_filepath(bc_file, "/mnt/rundir/input/dynamic_data")
                 if os.path.isfile(candidate_file):
                     t, y = load_timeseries(candidate_file, datestart=date_start)
                     model.bc[ibc].set_timeseries(t, y)
@@ -366,11 +366,11 @@ def load_observations(config, model):
         elif "provider" in obs_config:
 
             # Load xs.shp file
-            if os.path.isfile("input/static_data/xs.shp"):
-                xs_metadata = gpd.read_file("input/static_data/xs.shp")
+            if os.path.isfile("/mnt/rundir/input/static_data/xs.shp"):
+                xs_metadata = gpd.read_file("/mnt/rundir/input/static_data/xs.shp")
                 raise NotImplementedError("Findin cross-section index from xs.shp is not implemented yet.")
-            elif os.path.isfile("/mnt/run/input/static_data/xs_nodes.shp"):
-                xs_metadata = gpd.read_file("/mnt/run/input/static_data/xs_nodes.shp")
+            elif os.path.isfile("/mnt/rundir/input/static_data/xs_nodes.shp"):
+                xs_metadata = gpd.read_file("/mnt/rundir/input/static_data/xs_nodes.shp")
             else:
                 xs_metadata = None
                 # #TODO put an error message
