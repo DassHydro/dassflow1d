@@ -1,5 +1,6 @@
 import argparse
 import geopandas as gpd
+import glob
 import json
 import os
 import matplotlib.pyplot as plt
@@ -77,8 +78,9 @@ def load_timeseries(fname, datestart=None):
 
 def load_provider_timeseries(fname, datestart=None):
 
+    str_keys = ["BASIN", "RIVER"]
+    int_keys = ["REFERENCE DISTANCE (km)", ""]
     float_keys = ["REFERENCE LONGITUDE", "REFERENCE_LATITUDE"]
-
 
     with open(fname, "r") as fp:
         content = fp.readlines()
@@ -92,14 +94,21 @@ def load_provider_timeseries(fname, datestart=None):
             key, value = row_content.split("::")
             if key in float_keys:
                 value = float(value)
+            elif key in str_keys:
+                value = value.strip()
+            elif key in int_keys:
+                value = int(value)
+            else:
+                value = value.strip()
             metadata[key] = value
         row_index += 1
         if row_index >= len(content):
             break
      
-    data = pd.read_csv(fname, sep="\s+", skiprows=row_index, header=None, parse_dates={"datetime": [0,1]})
+    data = pd.read_csv(fname, sep="\s+", skiprows=row_index, header=None)
+    data["datetime"] = pd.to_datetime(data[0] + "T" + data[1])
     t = ((data.loc[:, "datetime"].dt.tz_localize(None) - np.datetime64(datestart)) / np.timedelta64(1, "s")).values
-    
+
     return t, data.loc[:, 2].values, metadata
 
 
@@ -304,11 +313,16 @@ def load_observations(config, model):
     nobs = 0
     for iobs, obs_config in enumerate(config["observations"]):
         if "timeseries_file" in obs_config:
+
             nobs += 1
+
         elif "provider" in obs_config:
+
             if obs_config["provider"] == "hydroweb":
-                # TODO
-                raise NotImplementedError("Listing of Hydroweb observations files is not implemented yet")
+
+                candidates_files = glob.glob(os.path.join("input", "assim_data", "hydroweb", "hydroweb_*.txt"))
+                nobs += len(candidates_files)
+
             elif obs_config["provider"] == "schapi":
                 if "code_stations" in obs_config:
                     nobs += len(obs_config["code_stations"])
@@ -330,7 +344,7 @@ def load_observations(config, model):
     # nobs = len(config["observations"])
     obs = m_obs.Observations(nobs)
     
-    # Setup Verdun-sur-Garonne station
+    # Setup observations station
     ista = 0
     for iobs, obs_config in enumerate(config["observations"]):
         
@@ -355,6 +369,8 @@ def load_observations(config, model):
             if os.path.isfile("input/static_data/xs.shp"):
                 xs_metadata = gpd.read_file("input/static_data/xs.shp")
                 raise NotImplementedError("Findin cross-section index from xs.shp is not implemented yet.")
+            elif os.path.isfile("/mnt/run/input/static_data/xs_nodes.shp"):
+                xs_metadata = gpd.read_file("/mnt/run/input/static_data/xs_nodes.shp")
             else:
                 xs_metadata = None
                 # #TODO put an error message
@@ -362,15 +378,44 @@ def load_observations(config, model):
 
 
             if obs_config["provider"] == "hydroweb":
-                
-                # TODO
-                raise NotImplementedError("Listing of Hydroweb observations files is not implemented yet")
+
+                obs_files = glob.glob(os.path.join("/mnt/rundir/input", "assim_data", "hydroweb", "hydroweb_*.txt"))
+
+                for obs_file in obs_files:
+
+                    tobs, Hobs, metadata = load_provider_timeseries(obs_file, datestart=date_start)
+                    if np.any(tobs <= model.te):
+                        Hobs = Hobs[tobs <= model.te]
+                        tobs = tobs[tobs <= model.te]
+                    HWobs = np.ones((2, Hobs.size)) * -1e+99
+                    HWobs[0, :] = Hobs
+
+                    if len(tobs) == 0:
+                        raise RuntimeError("No valid observations found in file: %s" % obs_file)
+
+                    # Setup station
+                    if xs_metadata is not None:
+
+                        node_id = metadata["ID"]
+                        candidates = xs_metadata[xs_metadata["node_id"] == node_id]
+                        if candidates.index.size == 0:
+                            raise RuntimeError("No XS associated to node %i" % node_id)
+                        elif candidates.index.size > 1:
+                            raise RuntimeError("Multiple XS associated to node %i" % node_id)
+                        xs_index = candidates["xs_idx"].values[0]
+                        obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
+                    else:
+                        x = metadata["REFERENCE LONGITUDE"]
+                        y = metadata["REFERENCE LATITUDE"]
+                        obs.stations[ista].setup(model.msh, tobs, HWobs, coords=[x, y])
+                    ista += 1
             
             elif obs_config["provider"] == "schapi":
+
                 if "code_stations" in obs_config:
                     obs_files = [os.path.join("/mnt/rundir/input", "assim_data", "schapi", "schapi_%s.txt" % code) for code in obs_config["code_stations"]]
                 else:
-                    obs_files = os.path.join("/mnt/rundir/input", "assim_data", "schapi", "schapi_*.txt")
+                    obs_files = glob.glob(os.path.join("/mnt/rundir/input", "assim_data", "schapi", "schapi_*.txt"))
                 for obs_file in obs_files:
                     tobs, Hobs, metadata = load_provider_timeseries(obs_file, datestart=date_start)
                     Hobs = Hobs[tobs <= model.te]
@@ -757,9 +802,13 @@ def run_optim(config, max_iterations=200, feps=1e-3):
     model.dtout = -1
     model.disable_stdout = True
 
+    def callback_minimize(x):
+        print("Iteration, cost= %12.5e, [proj g]= %12.5e" % (model.__last_cost__, np.linalg.norm(model.__last_grad__)))
+
     res = scipy.optimize.minimize(dassflow1d.calc_cost_and_gradients_scipy_minimize, control.x, 
                                   args=(model, control, obs), jac=True, tol = 1e-7, 
-                                  method='L-BFGS-B', options={"disp": True})
+                                  method='L-BFGS-B', options={"disp": False},
+                                  callback=callback_minimize)
     
     model.dtout = dtout0
     model.run_unsteady()
