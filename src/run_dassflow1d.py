@@ -1,12 +1,16 @@
 import argparse
 import geopandas as gpd
 import glob
+import io
 import json
+import logging
 import os
 import matplotlib.pyplot as plt
+import netCDF4 as nc
 import numpy as np
 import pandas as pd
 import scipy.optimize
+import sys
 
 import dassflow1d
 import dassflow1d.m_control as m_control
@@ -14,15 +18,46 @@ import dassflow1d.m_mesh as m_mesh
 import dassflow1d.m_sw_mono as m_sw_mono
 import dassflow1d.m_obs as m_obs
 
+
 def auto_filepath(path, candidate_dirs):
 
     if isinstance(candidate_dirs, str):
         candidate_dirs = [candidate_dirs]
     for candidate_dir in candidate_dirs:
         candidate_file = os.path.join(candidate_dir, path)
+        print("candidate_file: %s (found:%s)" % (candidate_file, str(os.path.isfile(candidate_file))))
         if os.path.isfile(candidate_file):
             return candidate_file
     return path
+
+
+def create_logger(debug:bool=False):
+    """ Create logger
+
+        Parameters
+        ----------
+            debug: bool
+                True to enable debug logging level
+        Return
+        ------
+            logger: logging.Logger
+    """
+
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+    if not type(sys.stdout) == io.TextIOWrapper:
+        handler = logging.StreamHandler(sys.stdout)
+    else:
+        handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger = logging.getLogger("dassflow1d")
+    logger.addHandler(handler)
+
+    # Set level
+    if debug is True:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+    return logger
 
 
 def load_configuration(fname):
@@ -66,10 +101,14 @@ def load_timeseries(fname, datestart=None):
         
         else:
             
-            data = pd.read_csv(fname, sep=",", parse_dates={"datetime": ["date", "time"]})
-            t = ((data.iloc[:, 0].dt.tz_localize(None) - np.datetime64(datestart)) / np.timedelta64(1, "s")).values
+            # data = pd.read_csv(fname, sep=",", parse_dates={"datetime": ["date", "time"]})
+            data = pd.read_csv(fname, sep=",")
+            print(data)
+            data["datetime"] = pd.to_datetime(data["date"] + "T" + data["time"])
+            print(data)
+            t = ((data.loc[:, "datetime"].dt.tz_localize(None) - np.datetime64(datestart)) / np.timedelta64(1, "s")).values
             
-            return t, data.iloc[:, 1].values
+            return t, data.iloc[:, 2].values
             
     else:
         
@@ -79,7 +118,7 @@ def load_timeseries(fname, datestart=None):
 def load_provider_timeseries(fname, datestart=None):
 
     str_keys = ["BASIN", "RIVER"]
-    int_keys = ["REFERENCE DISTANCE (km)", ""]
+    int_keys = ["REFERENCE DISTANCE (km)", "ID"]
     float_keys = ["REFERENCE LONGITUDE", "REFERENCE_LATITUDE"]
 
     with open(fname, "r") as fp:
@@ -131,7 +170,8 @@ def create_model(config):
     print("=" * 80)
     
     # Load mesh
-    mesh_fname = auto_filepath(config["model"]["mesh_file"], "/mnt/run/input/static_data")
+    mesh_fname = auto_filepath(config["model"]["mesh_file"], "/mnt/rundir/input/static_data")
+    print("mesh_fname=", mesh_fname)
     mesh = dassflow1d.read_mesh(mesh_fname)
     
     # Resample mesh if requested
@@ -249,6 +289,14 @@ def create_model(config):
     # Set output timestep
     model.dtout = config["model"]["output_timestep"]
     model.output_resampled_cs = True
+
+    if "output_format" in config["model"]:
+        output_format = config["model"]["output_format"]
+        if output_format not in ["csv", "netcdf"]:
+            raise ValueError("Output format must be either 'csv' or 'netcdf'")
+    else:
+        output_format = "netcdf"
+    model.output_format = output_format
     
     # Set output file
     if "output_file" in config["model"]:
@@ -256,7 +304,14 @@ def create_model(config):
     else:
         if not os.path.isdir("out"):
             os.mkdir("out")
-        model.output_file = "out/results.csv"
+        if output_format == "csv":
+            model.output_file = "out/results.csv"
+        else:
+            model.output_file = "output/dassflow1d_out.nc"
+
+    if output_format == "netcdf":
+        model.output_nc_file = model.output_file.decode("utf-8")
+        model.output_file = ""
     
     # Set minimal depth
     if "heps" in config["model"]:
@@ -373,9 +428,6 @@ def load_observations(config, model):
                 xs_metadata = gpd.read_file("/mnt/rundir/input/static_data/xs_nodes.shp")
             else:
                 xs_metadata = None
-                # #TODO put an error message
-                # xs_index = 2
-
 
             if obs_config["provider"] == "hydroweb":
 
@@ -394,15 +446,15 @@ def load_observations(config, model):
                         raise RuntimeError("No valid observations found in file: %s" % obs_file)
 
                     # Setup station
+                    xs_index = None
                     if xs_metadata is not None:
 
                         node_id = metadata["ID"]
                         candidates = xs_metadata[xs_metadata["node_id"] == node_id]
-                        if candidates.index.size == 0:
-                            raise RuntimeError("No XS associated to node %i" % node_id)
-                        elif candidates.index.size > 1:
-                            raise RuntimeError("Multiple XS associated to node %i" % node_id)
-                        xs_index = candidates["xs_idx"].values[0]
+                        if candidates.index.size == 1:
+                            xs_index = candidates["xs_idx"].values[0]
+
+                    if xs_index is not None:
                         obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
                     else:
                         x = metadata["REFERENCE LONGITUDE"]
@@ -427,8 +479,23 @@ def load_observations(config, model):
                         raise RuntimeError("No valid observations found in file: %s" % obs_file)
 
                     # Setup station
+                    # TODO write a common method (is identical to hydroweb association)
+                    xs_index = None
                     if xs_metadata is not None:
-                        # TODO Find index using metadata
+
+                        node_id = metadata["ID"]
+                        candidates = xs_metadata[xs_metadata["node_id"] == node_id]
+                        if candidates.index.size == 1:
+                            xs_index = candidates["xs_idx"].values[0]
+                        # else:
+                        #     xs_index = None
+                        #     # raise RuntimeError("No XS associated to node %i" % node_id)
+                        # # elif candidates.index.size > 1:
+                        # #     raise RuntimeError("Multiple XS associated to node %i" % node_id)
+                        # # xs_index = candidates["xs_idx"].values[0]
+                        # obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
+
+                    if xs_index is not None:
                         obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
                     else:
                         x = metadata["REFERENCE LONGITUDE"]
@@ -602,6 +669,66 @@ def load_control(config, model):
     
     return control
 
+def write_netcdf_results(model, config):
+
+    logger = logging.getLogger("dassflow1d")
+    logging.info("Export results to NetCDF file")
+
+    # Compute dates array
+    date_start = np.datetime64(config["model"]["date_start"])
+    nt = len(model.res.t)
+    print("nt =", nt)
+    dates = np.array([date_start + np.timedelta64(int(x * model.dtout), "s") for x in range(0, nt)])
+
+    # Retrieve coordinates of cross-sections
+    mesh = model.msh
+    coords = np.zeros(shape=(0,2))
+    for iseg in range(0, mesh.nseg):
+        coords = np.concatenate((coords, mesh.get_segment_field(iseg, "coords")), axis=0)
+    nx = coords.shape[0]
+    print("nx =", nx)
+
+    # Compute indices of real cross-sections in res array
+    indices = []
+    for iseg in range(0, mesh.nseg):
+        for ics in range(mesh.seg[iseg].first_cs-1, mesh.seg[iseg].last_cs):
+            if mesh.cs[ics].ibase > 0:
+                # print(ics, mesh.cs[ics].ibase)
+                indices.append(ics-1)
+        #         choice = input()
+        # coords = np.concatenate((coords, mesh.get_segment_field(iseg, "coord")), axis=0)
+
+    # Create netCDF output file
+    logger.info("- Create NetCDF output file: %s" % model.output_nc_file)
+    dataset = nc.Dataset(model.output_nc_file, "w", format="NETCDF4")
+    print("step")
+    dataset.createDimension("nx", nx)
+    print("step")
+    dataset.createDimension("nt", nt)
+    print("step")
+    time = dataset.createVariable("time", "f4", ("nt",))
+    time.setncattr("units", "seconds since 2000-01-01 00:00:00")
+    time[:] = (dates - np.datetime64("2000-01-01 00:00:00")) / np.timedelta64(1, "s")
+    print("step")
+    x = dataset.createVariable("x", "f4", ("nx",))
+    x[:] = coords[:, 0]
+    print("step")
+    y = dataset.createVariable("y", "f4", ("nx",))
+    y[:] = coords[:, 1]
+    print("step")
+    h = dataset.createVariable("h", "f4", ("nt", "nx"))
+    h.setncattr("units", "m3/s")
+    offset = 0
+    h[:, :] = model.res.h[indices, :].T
+    print("step")
+    Q = dataset.createVariable("Q", "f4", ("nt", "nx"))
+    Q.setncattr("units", "m3/s")
+    Q[:, :] = model.res.q[indices, :].T
+    dataset.close()
+
+
+
+
 
 def run_direct(config, display_internal_counters=False):
   
@@ -621,6 +748,9 @@ def run_direct(config, display_internal_counters=False):
     
     # Run direct model
     model.run_unsteady()
+
+    if model.output_format == "netcdf":
+        write_netcdf_results(model, config)
     # print(model.status)
     # print(model.res.h[:, 0])
     # bathy = model.msh.get_segment_field(0, "bathy", base_cs=False)
@@ -662,14 +792,14 @@ def run_calc_cost(config, display_internal_counters=False):
     print("- cost: %f" % cost)
     print("")
 
-    plt.plot(obs.obs[0, :], "ro")
-    plt.plot(obs.est[0, :], "b-")
-    plt.show()
+    # plt.plot(obs.obs[0, :], "ro")
+    # plt.plot(obs.est[0, :], "b-")
+    # plt.show()
 
-    delta = np.mean(obs.obs[0, :]) - np.mean(obs.est[0, :])
-    plt.plot(obs.obs[0, :], "ro")
-    plt.plot(obs.est[0, :] + delta, "b-")
-    plt.show()
+    # delta = np.mean(obs.obs[0, :]) - np.mean(obs.est[0, :])
+    # plt.plot(obs.obs[0, :], "ro")
+    # plt.plot(obs.est[0, :] + delta, "b-")
+    # plt.show()
 
     # print(model.res.t)
     # index = np.argmin(5.09400E+05-model.res.t)
@@ -770,14 +900,14 @@ def run_gradient_test(config, iterations=34, delta=1e-3):
         oneminusI_centered[i] = np.abs(1.0 - (cost_right - cost_left) / (2.0 * alpha * np.dot(grad, dx)))
         print(" %12.5e | %12.5e | %12.5e | %12.5e |" % (alpha, oneminusI_right[i], oneminusI_centered[i], oneminusI_left[i]))
         
-    plt.plot(alphas, oneminusI_right, 'b-', label="right")
-    plt.plot(alphas, oneminusI_left, 'r-', label="left")
-    plt.plot(alphas, oneminusI_centered, 'g-', label="centered")
-    plt.xlabel(r"$\alpha$")
-    plt.ylabel(r"$\left|1-I_\alpha \right|$")
-    plt.loglog()
-    plt.legend()
-    plt.show()
+    # plt.plot(alphas, oneminusI_right, 'b-', label="right")
+    # plt.plot(alphas, oneminusI_left, 'r-', label="left")
+    # plt.plot(alphas, oneminusI_centered, 'g-', label="centered")
+    # plt.xlabel(r"$\alpha$")
+    # plt.ylabel(r"$\left|1-I_\alpha \right|$")
+    # plt.loglog()
+    # plt.legend()
+    # plt.show()
     
 
 
@@ -818,17 +948,17 @@ def run_optim(config, max_iterations=200, feps=1e-3):
     residuals = obs.est[0, valid] - yobs
     rmse = np.sqrt(np.sum(np.ravel(residuals)**2) / obs.obs.shape[1])
     nse = 1.0 - np.sum(np.ravel(residuals)**2) / np.sum((np.ravel(yobs) - np.mean(np.ravel(yobs)))**2)
-    plt.plot(obs.obs[0, :], "ro")
-    plt.plot(obs.est[0, :], "b-")
-    plt.title("valid: %i, rmse=%.2f cm" % (valid.size, rmse))
-    plt.show()
+    # plt.plot(obs.obs[0, :], "ro")
+    # plt.plot(obs.est[0, :], "b-")
+    # plt.title("valid: %i, rmse=%.2f cm" % (valid.size, rmse))
+    # plt.show()
 
-    delta = np.mean(obs.obs[0, :]) - np.mean(obs.est[0, :])
-    rmse = np.sqrt(np.sum(np.ravel(residuals+delta)**2) / obs.obs.shape[1])
-    plt.plot(obs.obs[0, :], "ro")
-    plt.plot(obs.est[0, :] + delta, "b-")
-    plt.title("valid: %i, rmse=%.2f cm" % (valid.size, rmse))
-    plt.show()
+    # delta = np.mean(obs.obs[0, :]) - np.mean(obs.est[0, :])
+    # rmse = np.sqrt(np.sum(np.ravel(residuals+delta)**2) / obs.obs.shape[1])
+    # plt.plot(obs.obs[0, :], "ro")
+    # plt.plot(obs.est[0, :] + delta, "b-")
+    # plt.title("valid: %i, rmse=%.2f cm" % (valid.size, rmse))
+    # plt.show()
 
 
     # cost, grad = dassflow1d.calc_cost_and_gradients(model, control, obs)
@@ -885,6 +1015,9 @@ if __name__ == "__main__":
     parser.add_argument("--display-internal-counters", dest="display_internal_counters", action="store_true", 
                         help="Display internal counters values")
     args = parser.parse_args()
+
+    # Create Logger
+    logger = create_logger()
     
     # Load configuration
     config = load_configuration(args.config_file)
