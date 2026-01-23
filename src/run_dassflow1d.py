@@ -19,6 +19,9 @@ import dassflow1d.m_sw_mono as m_sw_mono
 import dassflow1d.m_obs as m_obs
 
 
+__rootdir__ = "/mnt/rundir"
+
+
 def auto_filepath(path, candidate_dirs):
 
     logger = logging.getLogger("dassflow1d")
@@ -33,7 +36,7 @@ def auto_filepath(path, candidate_dirs):
     return path
 
 
-def create_logger(debug:bool=False):
+def create_logger(debug: bool=False):
     """ Create logger
 
         Parameters
@@ -107,7 +110,7 @@ def load_provider_timeseries(fname, datestart=None):
 
     str_keys = ["BASIN", "RIVER"]
     int_keys = ["REFERENCE DISTANCE (km)", "ID"]
-    float_keys = ["REFERENCE LONGITUDE", "REFERENCE_LATITUDE"]
+    float_keys = ["REFERENCE LONGITUDE", "REFERENCE LATITUDE"]
 
     with open(fname, "r") as fp:
         content = fp.readlines()
@@ -158,9 +161,13 @@ def create_model(config):
     logger.info("=" * 80)
     logger.info(" SETUP MODEL")
     logger.info("=" * 80)
+
+    static_data_dir = os.path.join(__rootdir__, "input", "static_data")
+    dynamic_data_dir = os.path.join(__rootdir__, "input", "dynamic_data")
+    output_dir = os.path.join(__rootdir__, "output")
     
     # Load mesh
-    mesh_fname = auto_filepath(config["model"]["mesh_file"], "/mnt/rundir/input/static_data")
+    mesh_fname = auto_filepath(config["model"]["mesh_file"], static_data_dir)
     logger.debug("mesh_fname=", mesh_fname)
     mesh = dassflow1d.read_mesh(mesh_fname)
     
@@ -223,13 +230,13 @@ def create_model(config):
             t, y = load_timeseries(bc_config["timeseries_file"], datestart=date_start)
             model.bc[ibc].set_timeseries(t, y)
         elif "provider" in bc_config:
-            candidate_file = auto_filepath("BC%04i.csv" % ibc, "/mnt/rundir/input/dynamic_data")
+            candidate_file = auto_filepath("BC%04i.csv" % ibc, dynamic_data_dir)
             if os.path.isfile(candidate_file):
                 t, y = load_timeseries(candidate_file, datestart=date_start)
                 model.bc[ibc].set_timeseries(t, y)
             elif "code_station" in bc_config:
                 bc_file = "%s_%s.csv" % (bc_config["id"], bc_config["code_station"])
-                candidate_file = auto_filepath(bc_file, "/mnt/rundir/input/dynamic_data")
+                candidate_file = auto_filepath(bc_file, dynamic_data_dir)
                 if os.path.isfile(candidate_file):
                     t, y = load_timeseries(candidate_file, datestart=date_start)
                     model.bc[ibc].set_timeseries(t, y)
@@ -292,12 +299,12 @@ def create_model(config):
     if "output_file" in config["model"]:
         model.output_file = config["model"]["output_file"]
     else:
-        if not os.path.isdir("/mnt/rundir/output"):
-            os.mkdir("/mnt/rundir/output")
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
         if output_format == "csv":
-            model.output_file = "/mnt/rundir/output/results.csv"
+            model.output_file = os.path.join(output_dir, "results.csv")
         else:
-            model.output_file = "/mnt/rundir/output/dassflow1d_out.nc"
+            model.output_file = os.path.join(output_dir, "dassflow1d_out.nc")
 
     if output_format == "netcdf":
         model.output_nc_file = model.output_file.decode("utf-8")
@@ -349,6 +356,11 @@ def load_observations(config, model):
     logger.info("=" * 80)
     logger.info(" SETUP OBSERVATIONS STATIONS")
     logger.info("=" * 80)
+
+    static_data_dir = os.path.join(__rootdir__, "input", "static_data")
+    assim_data_dir = os.path.join(__rootdir__, "input", "assim_data")
+    # dynamic_data_dir = os.path.join(__rootdir__, "input", "dynamic_data")
+    # output_dir = os.path.join(__rootdir__, "output")
     
     # Retrieve date start if specified
     if "date_start" in config["model"]:
@@ -367,14 +379,20 @@ def load_observations(config, model):
 
             if obs_config["provider"] == "hydroweb":
 
-                candidates_files = glob.glob(os.path.join("input", "assim_data", "hydroweb", "hydroweb_*.txt"))
+                logger.debug("Search for hydroweb files")
+                candidates_files = glob.glob(os.path.join(assim_data_dir, "hydroweb", "hydroweb_*.txt"))
+                logger.debug("- Number of hydroweb files found: %i" % len(candidates_files))
                 nobs += len(candidates_files)
 
             elif obs_config["provider"] == "schapi":
+
                 if "code_stations" in obs_config:
+                    logger.debug("Add %i schapi stations from codes defined in the config file")
                     nobs += len(obs_config["code_stations"])
                 else:
-                    candidates_files = os.path.join("input", "assim_data", "schapi_*.csv")
+                    logger.debug("Search for schapi files")
+                    candidates_files = os.path.join(assim_data_dir, "schapi_*.csv")
+                    logger.debug("- Number of schapi files found: %i" % len(candidates_files))
                     nobs += len(candidates_files)
 
                 # raise NotImplementedError("Listing of SCHAPI observations files is not implemented yet")
@@ -413,20 +431,23 @@ def load_observations(config, model):
         elif "provider" in obs_config:
 
             # Load xs.shp file
-            if os.path.isfile("/mnt/rundir/input/static_data/xs.shp"):
-                xs_metadata = gpd.read_file("/mnt/rundir/input/static_data/xs.shp")
+            if os.path.isfile(os.path.join(static_data_dir, "xs.shp")):
+                xs_metadata = gpd.read_file(os.path.join(static_data_dir, "xs.shp"))
                 raise NotImplementedError("Findin cross-section index from xs.shp is not implemented yet.")
-            elif os.path.isfile("/mnt/rundir/input/static_data/xs_nodes.shp"):
-                xs_metadata = gpd.read_file("/mnt/rundir/input/static_data/xs_nodes.shp")
+            elif os.path.isfile(os.path.join(static_data_dir, "xs_nodes.shp")):
+                logger.debug("Use xs<->nodes assocation file for provider %s" % obs_config["provider"])
+                xs_metadata = gpd.read_file(os.path.join(static_data_dir, "xs_nodes.shp"))
             else:
                 xs_metadata = None
 
             if obs_config["provider"] == "hydroweb":
 
-                obs_files = glob.glob(os.path.join("/mnt/rundir/input", "assim_data", "hydroweb", "hydroweb_*.txt"))
+                logger.debug("Load hydroweb observations files")
+                obs_files = glob.glob(os.path.join(assim_data_dir, "hydroweb", "hydroweb_*.txt"))
 
                 for obs_file in obs_files:
 
+                    logger.debug("- Load hydroweb observations file: %s" % os.path.basename(obs_file))
                     tobs, Hobs, metadata = load_provider_timeseries(obs_file, datestart=date_start)
                     if np.any(tobs <= model.te):
                         Hobs = Hobs[tobs <= model.te]
@@ -436,6 +457,7 @@ def load_observations(config, model):
 
                     if len(tobs) == 0:
                         raise RuntimeError("No valid observations found in file: %s" % obs_file)
+                    logger.debug("  - Number of observations: %i" % len(tobs))
 
                     # Setup station
                     xs_index = None
@@ -447,20 +469,25 @@ def load_observations(config, model):
                             xs_index = candidates["xs_idx"].values[0]
 
                     if xs_index is not None:
+                        logger.debug("  - Station index: %i (ncs=%i)" % (xs_index, model.msh.ncs))
                         obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
                     else:
                         x = metadata["REFERENCE LONGITUDE"]
                         y = metadata["REFERENCE LATITUDE"]
+                        logger.debug("  - Station coordinates: %f,%f" % (x, y))
                         obs.stations[ista].setup(model.msh, tobs, HWobs, coords=[x, y])
+                        logger.debug("  - Station index: %i" % obs.stations[ista].ics[0])
                     ista += 1
             
             elif obs_config["provider"] == "schapi":
 
+                logger.debug("Load schapi observations files")
                 if "code_stations" in obs_config:
-                    obs_files = [os.path.join("/mnt/rundir/input", "assim_data", "schapi", "schapi_%s.txt" % code) for code in obs_config["code_stations"]]
+                    obs_files = [os.path.join(assim_data_dir, "schapi", "schapi_%s.txt" % code) for code in obs_config["code_stations"]]
                 else:
-                    obs_files = glob.glob(os.path.join("/mnt/rundir/input", "assim_data", "schapi", "schapi_*.txt"))
+                    obs_files = glob.glob(os.path.join(assim_data_dir, "schapi", "schapi_*.txt"))
                 for obs_file in obs_files:
+                    logger.debug("- Load schapi observations file: %s" % os.path.basename(obs_file))
                     tobs, Hobs, metadata = load_provider_timeseries(obs_file, datestart=date_start)
                     Hobs = Hobs[tobs <= model.te]
                     tobs = tobs[tobs <= model.te]
@@ -469,6 +496,7 @@ def load_observations(config, model):
 
                     if len(tobs) == 0:
                         raise RuntimeError("No valid observations found in file: %s" % obs_file)
+                    logger.debug("  - Number of observations: %i" % len(tobs))
 
                     # Setup station
                     # TODO write a common method (is identical to hydroweb association)
@@ -488,11 +516,14 @@ def load_observations(config, model):
                         # obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
 
                     if xs_index is not None:
+                        logger.debug("  - Station index: %i (ncs=%i)" % (xs_index, model.msh.ncs))
                         obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
                     else:
                         x = metadata["REFERENCE LONGITUDE"]
                         y = metadata["REFERENCE LATITUDE"]
+                        logger.debug("  - Station coordinates: %f,%f" % (x, y))
                         obs.stations[ista].setup(model.msh, tobs, HWobs, coords=[x, y])
+                        logger.debug("  - Station index: %i" % obs.stations[ista].ics[0])
                     ista += 1
 
                 # # TODO
@@ -1020,10 +1051,12 @@ if __name__ == "__main__":
                         help="Type of run")
     parser.add_argument("--display-internal-counters", dest="display_internal_counters", action="store_true", 
                         help="Display internal counters values")
+    parser.add_argument("--debug", action="store_true", 
+                        help="Enable debug log")
     args = parser.parse_args()
 
     # Create Logger
-    logger = create_logger()
+    logger = create_logger(args.debug)
     
     # Load configuration
     config = load_configuration(args.config_file)
