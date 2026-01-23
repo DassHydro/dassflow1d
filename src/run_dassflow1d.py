@@ -168,7 +168,7 @@ def create_model(config):
     
     # Load mesh
     mesh_fname = auto_filepath(config["model"]["mesh_file"], static_data_dir)
-    logger.debug("mesh_fname=", mesh_fname)
+    logger.debug("mesh_fname=%s" % mesh_fname)
     mesh = dassflow1d.read_mesh(mesh_fname)
     
     # Resample mesh if requested
