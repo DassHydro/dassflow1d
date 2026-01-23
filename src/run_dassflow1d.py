@@ -21,11 +21,13 @@ import dassflow1d.m_obs as m_obs
 
 def auto_filepath(path, candidate_dirs):
 
+    logger = logging.getLogger("dassflow1d")
+
     if isinstance(candidate_dirs, str):
         candidate_dirs = [candidate_dirs]
     for candidate_dir in candidate_dirs:
         candidate_file = os.path.join(candidate_dir, path)
-        print("candidate_file: %s (found:%s)" % (candidate_file, str(os.path.isfile(candidate_file))))
+        logger.debug("candidate_file: %s (found:%s)" % (candidate_file, str(os.path.isfile(candidate_file))))
         if os.path.isfile(candidate_file):
             return candidate_file
     return path
@@ -80,18 +82,6 @@ def load_configuration(fname):
 
 def load_timeseries(fname, datestart=None):
 
-    # # Try with internal format
-    # with open(fname, "r") as fp:
-    #     content = fp.readlines()
-
-    # # Count number of lines with sharp at the beginning
-    # row_index = 0
-    # while content[row_index].rstrip()[0:1] == "#":
-    #     row_index += 1
-    #     if row_index >= len(content):
-    #         break
-    # print("row_index =", row_index)
-     
     if os.path.splitext(fname)[1] == ".csv":
         
         if datestart is None:
@@ -103,9 +93,7 @@ def load_timeseries(fname, datestart=None):
             
             # data = pd.read_csv(fname, sep=",", parse_dates={"datetime": ["date", "time"]})
             data = pd.read_csv(fname, sep=",")
-            print(data)
             data["datetime"] = pd.to_datetime(data["date"] + "T" + data["time"])
-            print(data)
             t = ((data.loc[:, "datetime"].dt.tz_localize(None) - np.datetime64(datestart)) / np.timedelta64(1, "s")).values
             
             return t, data.iloc[:, 2].values
@@ -165,13 +153,15 @@ def create_model(config):
                 DassFlow-1D model
     """
 
-    print("=" * 80)
-    print(" SETUP MODEL")
-    print("=" * 80)
+    logger = logging.getLogger("dassflow1d")
+
+    logger.info("=" * 80)
+    logger.info(" SETUP MODEL")
+    logger.info("=" * 80)
     
     # Load mesh
     mesh_fname = auto_filepath(config["model"]["mesh_file"], "/mnt/rundir/input/static_data")
-    print("mesh_fname=", mesh_fname)
+    logger.debug("mesh_fname=", mesh_fname)
     mesh = dassflow1d.read_mesh(mesh_fname)
     
     # Resample mesh if requested
@@ -302,12 +292,12 @@ def create_model(config):
     if "output_file" in config["model"]:
         model.output_file = config["model"]["output_file"]
     else:
-        if not os.path.isdir("out"):
-            os.mkdir("out")
+        if not os.path.isdir("/mnt/rundir/output"):
+            os.mkdir("/mnt/rundir/output")
         if output_format == "csv":
-            model.output_file = "out/results.csv"
+            model.output_file = "/mnt/rundir/output/results.csv"
         else:
-            model.output_file = "output/dassflow1d_out.nc"
+            model.output_file = "/mnt/rundir/output/dassflow1d_out.nc"
 
     if output_format == "netcdf":
         model.output_nc_file = model.output_file.decode("utf-8")
@@ -354,9 +344,11 @@ def load_observations(config, model):
                 Observations object
     """
 
-    print("=" * 80)
-    print(" SETUP OBSERVATIONS STATIONS")
-    print("=" * 80)
+    logger = logging.getLogger("dassflow1d")
+
+    logger.info("=" * 80)
+    logger.info(" SETUP OBSERVATIONS STATIONS")
+    logger.info("=" * 80)
     
     # Retrieve date start if specified
     if "date_start" in config["model"]:
@@ -393,7 +385,7 @@ def load_observations(config, model):
                 raise ValueError("Wrong provider: %s" % obs_config["provider"])
         else:
             raise ValueError("Unable to process observation %i. Either provide timeseries file or provider." % iobs)
-    print("- Number of stations: %i" % nobs)
+    logger.info("- Number of stations: %i" % nobs)
     
     # Allocate observations object
     # nobs = len(config["observations"])
@@ -525,7 +517,7 @@ def load_observations(config, model):
             #     raise RuntimeError("Unable to load values for boundary condition %i" % ibc)
 
         
-    print("")
+    logger.info("")
     
     return obs
 
@@ -546,9 +538,11 @@ def load_control(config, model):
                 Control object
     """
 
-    print("=" * 80)
-    print(" SETUP CONTROL")
-    print("=" * 80)
+    logger = logging.getLogger("dassflow1d")
+
+    logger.info("=" * 80)
+    logger.info(" SETUP CONTROL")
+    logger.info("=" * 80)
 
     # Create control object
     control = m_control.Control()
@@ -639,10 +633,10 @@ def load_control(config, model):
         else:
             becm_lengths.append(np.nan)
 
-    print("Control size: %i" % control.x.size)
+    logger.info("Control size: %i" % control.x.size)
 
     if use_becm is True:
-        print("Use Background Error Correlation Matrix")
+        logger.info("Use Background Error Correlation Matrix")
         control.x0 = control.x[:]
         # x_prior = control.x0.copy()
         B = control.zero_block_matrix()
@@ -665,7 +659,7 @@ def load_control(config, model):
 
         control.set_prior_error_covariance_matrixblock(B)
         control.x[:] = 0.0
-    print("")
+    logger.info("")
     
     return control
 
@@ -677,7 +671,6 @@ def write_netcdf_results(model, config):
     # Compute dates array
     date_start = np.datetime64(config["model"]["date_start"])
     nt = len(model.res.t)
-    print("nt =", nt)
     dates = np.array([date_start + np.timedelta64(int(x * model.dtout), "s") for x in range(0, nt)])
 
     # Retrieve coordinates of cross-sections
@@ -686,7 +679,6 @@ def write_netcdf_results(model, config):
     for iseg in range(0, mesh.nseg):
         coords = np.concatenate((coords, mesh.get_segment_field(iseg, "coords")), axis=0)
     nx = coords.shape[0]
-    print("nx =", nx)
 
     # Compute indices of real cross-sections in res array
     indices = []
@@ -701,26 +693,19 @@ def write_netcdf_results(model, config):
     # Create netCDF output file
     logger.info("- Create NetCDF output file: %s" % model.output_nc_file)
     dataset = nc.Dataset(model.output_nc_file, "w", format="NETCDF4")
-    print("step")
     dataset.createDimension("nx", nx)
-    print("step")
     dataset.createDimension("nt", nt)
-    print("step")
     time = dataset.createVariable("time", "f4", ("nt",))
     time.setncattr("units", "seconds since 2000-01-01 00:00:00")
     time[:] = (dates - np.datetime64("2000-01-01 00:00:00")) / np.timedelta64(1, "s")
-    print("step")
     x = dataset.createVariable("x", "f4", ("nx",))
     x[:] = coords[:, 0]
-    print("step")
     y = dataset.createVariable("y", "f4", ("nx",))
     y[:] = coords[:, 1]
-    print("step")
     h = dataset.createVariable("h", "f4", ("nt", "nx"))
     h.setncattr("units", "m3/s")
     offset = 0
     h[:, :] = model.res.h[indices, :].T
-    print("step")
     Q = dataset.createVariable("Q", "f4", ("nt", "nx"))
     Q.setncattr("units", "m3/s")
     Q[:, :] = model.res.q[indices, :].T
@@ -731,20 +716,20 @@ def write_netcdf_results(model, config):
 
 
 def run_direct(config, display_internal_counters=False):
+
+    logger = logging.getLogger("dassflow1d")
   
     # Create model
     model = create_model(config)
-    print(model)
-    print("")
     # print(model.bc[1].ts.t)
     # print(model.bc[1].ts.y)
     # print(model.msh.strickler_type)
     # print(model.msh.cs[2].strickler_params)
     
     # Run direct
-    print("=" * 80)
-    print(" SIMULATION")
-    print("=" * 80)
+    logger.info("=" * 80)
+    logger.info(" SIMULATION")
+    logger.info("=" * 80)
     
     # Run direct model
     model.run_unsteady()
@@ -759,14 +744,16 @@ def run_direct(config, display_internal_counters=False):
     # plt.plot(x, bathy+model.res.h[2:-2, 0], "b-")
     # plt.show()
     if display_internal_counters:
-        print("- Number of overbank flow occurences: %i" % model.internal_counters[0])
-        print("  - Left overbank flow occurences : %i" % model.internal_counters[1])
-        print("  - Right overbank flow occurences: %i" % model.internal_counters[2])
-        print("- Number of overflow (flow above highest elevation) occurences: %i" % model.internal_counters[3])
-    print("")
+        logger.debug("- Number of overbank flow occurences: %i" % model.internal_counters[0])
+        logger.debug("  - Left overbank flow occurences : %i" % model.internal_counters[1])
+        logger.debug("  - Right overbank flow occurences: %i" % model.internal_counters[2])
+        logger.debug("- Number of overflow (flow above highest elevation) occurences: %i" % model.internal_counters[3])
+    logger.info("")
 
 
 def run_calc_cost(config, display_internal_counters=False):
+
+    logger = logging.getLogger("dassflow1d")
   
     # Create model
     model = create_model(config)
@@ -778,19 +765,19 @@ def run_calc_cost(config, display_internal_counters=False):
     control = m_control.Control()
     
     # Run direct 
-    print("=" * 80)
-    print(" SIMULATION")
-    print("=" * 80)
+    logger.info("=" * 80)
+    logger.info(" SIMULATION")
+    logger.info("=" * 80)
     
     # Run direct model to compute cost
     cost = dassflow1d.calc_cost(model, control, obs)
     if display_internal_counters:
-        print("- Number of overbank flow occurences: %i" % model.internal_counters[0])
-        print("  - Left overbank flow occurences : %i" % model.internal_counters[1])
-        print("  - Right overbank flow occurences: %i" % model.internal_counters[2])
-        print("- Number of overflow (flow above highest elevation) occurences: %i" % model.internal_counters[3])
-    print("- cost: %f" % cost)
-    print("")
+        logger.debug("- Number of overbank flow occurences: %i" % model.internal_counters[0])
+        logger.debug("  - Left overbank flow occurences : %i" % model.internal_counters[1])
+        logger.debug("  - Right overbank flow occurences: %i" % model.internal_counters[2])
+        logger.debug("- Number of overflow (flow above highest elevation) occurences: %i" % model.internal_counters[3])
+    logger.info("- cost: %f" % cost)
+    logger.info("")
 
     # plt.plot(obs.obs[0, :], "ro")
     # plt.plot(obs.est[0, :], "b-")
@@ -813,7 +800,9 @@ def run_calc_cost(config, display_internal_counters=False):
 
 
 def run_calc_cost_and_grad(config, display_cost=True, display_internal_counters=False):
-  
+
+    logger = logging.getLogger("dassflow1d")
+
     # Create model
     model = create_model(config)
   
@@ -824,12 +813,12 @@ def run_calc_cost_and_grad(config, display_cost=True, display_internal_counters=
     control = load_control(config, model)
     
     # Run gradient test 
-    print("=" * 80)
+    logger.info("=" * 80)
     if display_cost:
-        print(" COMPUTE COST AND GRADIENTS")
+        logger.info(" COMPUTE COST AND GRADIENTS")
     else:
-        print(" COMPUTE GRADIENTS")
-    print("=" * 80)
+        logger.info(" COMPUTE GRADIENTS")
+    logger.info("=" * 80)
     
     # Run adjoint model to compute cost and gradient
     model.dtout = -1
@@ -837,19 +826,21 @@ def run_calc_cost_and_grad(config, display_cost=True, display_internal_counters=
     cost, grad = dassflow1d.calc_cost_and_gradients(model, control, obs)
     grad_norm = np.linalg.norm(grad)
     if display_internal_counters:
-        print("- Number of overbank flow occurences: %i" % model.internal_counters[0])
-        print("  - Left overbank flow occurences : %i" % model.internal_counters[1])
-        print("  - Right overbank flow occurences: %i" % model.internal_counters[2])
-        print("- Number of overflow (flow above highest elevation) occurences: %i" % model.internal_counters[3])
+        logger.debug("- Number of overbank flow occurences: %i" % model.internal_counters[0])
+        logger.debug("  - Left overbank flow occurences : %i" % model.internal_counters[1])
+        logger.debug("  - Right overbank flow occurences: %i" % model.internal_counters[2])
+        logger.debug("- Number of overflow (flow above highest elevation) occurences: %i" % model.internal_counters[3])
     if display_cost:
-        print("- cost  : %f" % cost)
-    print("- grad  : [%f, %f]" % (np.min(grad), np.max(grad)))
-    print("- |grad|: %f" % grad_norm)
-    print("")
+        logger.info("- cost  : %f" % cost)
+    logger.info("- grad  : [%f, %f]" % (np.min(grad), np.max(grad)))
+    logger.info("- |grad|: %f" % grad_norm)
+    logger.info("")
 
 
 def run_gradient_test(config, iterations=34, delta=1e-3):
-  
+
+    logger = logging.getLogger("dassflow1d")
+
     # Create model
     model = create_model(config)
   
@@ -860,18 +851,18 @@ def run_gradient_test(config, iterations=34, delta=1e-3):
     control = load_control(config, model)
     
     # Run gradient test 
-    print("=" * 80)
-    print(" GRADIENT TEST")
-    print("=" * 80)
+    logger.info("=" * 80)
+    logger.info(" GRADIENT TEST")
+    logger.info("=" * 80)
     
     # Run adjoint model to compute cost and gradient
     model.dtout = -1
     model.disable_stdout = True
     cost, grad = dassflow1d.calc_cost_and_gradients(model, control, obs)
     grad_norm = np.linalg.norm(grad)
-    print("- cost  : %f" % cost)
-    print("- |grad|: %f" % grad_norm)
-    print("")
+    logger.info("- cost  : %f" % cost)
+    logger.info("- |grad|: %f" % grad_norm)
+    logger.info("")
     
     # Loop on epsilon values
     dx = control.x * delta
@@ -880,7 +871,7 @@ def run_gradient_test(config, iterations=34, delta=1e-3):
     oneminusI_right = np.zeros(iterations)
     oneminusI_left = np.zeros(iterations)
     oneminusI_centered = np.zeros(iterations)
-    print(" Alpha        | |1-Iright|   | |1-Icent.|   | |1-Ileft|    |")
+    logger.info(" Alpha        | |1-Iright|   | |1-Icent.|   | |1-Ileft|    |")
     for i in range(iterations):
         
         alpha = 2**(-i)
@@ -898,7 +889,7 @@ def run_gradient_test(config, iterations=34, delta=1e-3):
         oneminusI_right[i] = np.abs(1.0 - (cost_right - cost) / (alpha * np.dot(grad, dx)))
         oneminusI_left[i] = np.abs(1.0 - (cost - cost_left) / (alpha * np.dot(grad, dx)))
         oneminusI_centered[i] = np.abs(1.0 - (cost_right - cost_left) / (2.0 * alpha * np.dot(grad, dx)))
-        print(" %12.5e | %12.5e | %12.5e | %12.5e |" % (alpha, oneminusI_right[i], oneminusI_centered[i], oneminusI_left[i]))
+        logger.info(" %12.5e | %12.5e | %12.5e | %12.5e |" % (alpha, oneminusI_right[i], oneminusI_centered[i], oneminusI_left[i]))
         
     # plt.plot(alphas, oneminusI_right, 'b-', label="right")
     # plt.plot(alphas, oneminusI_left, 'r-', label="left")
@@ -913,6 +904,8 @@ def run_gradient_test(config, iterations=34, delta=1e-3):
 
 def run_optim(config, max_iterations=200, feps=1e-3):
 
+    logger = logging.getLogger("dassflow1d")
+
     # Create model
     model = create_model(config)
   
@@ -923,9 +916,9 @@ def run_optim(config, max_iterations=200, feps=1e-3):
     control = load_control(config, model)
     
     # Run gradient test 
-    print("=" * 80)
-    print(" OPTIMISATION")
-    print("=" * 80)
+    logger.info("=" * 80)
+    logger.info(" OPTIMISATION")
+    logger.info("=" * 80)
     
     # Run adjoint model to compute cost and gradient
     dtout0 = model.dtout
@@ -933,21 +926,34 @@ def run_optim(config, max_iterations=200, feps=1e-3):
     model.disable_stdout = True
 
     def callback_minimize(x):
-        print("Iteration, cost= %12.5e, [proj g]= %12.5e" % (model.__last_cost__, np.linalg.norm(model.__last_grad__)))
+        logger.info("Iteration, cost= %12.5e, [proj g]= %12.5e" % (model.__last_cost__, np.linalg.norm(model.__last_grad__)))
 
     res = scipy.optimize.minimize(dassflow1d.calc_cost_and_gradients_scipy_minimize, control.x, 
                                   args=(model, control, obs), jac=True, tol = 1e-7, 
                                   method='L-BFGS-B', options={"disp": False},
                                   callback=callback_minimize)
     
+    if res.success is True:
+        logger.info("Optimisation is successful")
+    else:
+        logger.info("Optimisation has failed: %s" % res.message)
+    logger.info("- Number of iterations: %s" % res.nit)
+    logger.info("- Number of cost evaluation: %s" % res.nfev)
+    
     model.dtout = dtout0
+    model.print_progress = False
+    logger.info("Compute results with optimal control")
     model.run_unsteady()
 
-    valid = np.ravel(np.argwhere(obs.est[0, :] > -99999))
-    yobs = obs.obs[0, valid]
-    residuals = obs.est[0, valid] - yobs
-    rmse = np.sqrt(np.sum(np.ravel(residuals)**2) / obs.obs.shape[1])
-    nse = 1.0 - np.sum(np.ravel(residuals)**2) / np.sum((np.ravel(yobs) - np.mean(np.ravel(yobs)))**2)
+    if model.output_format == "netcdf":
+        write_netcdf_results(model, config)
+
+
+    # valid = np.ravel(np.argwhere(obs.est[0, :] > -99999))
+    # yobs = obs.obs[0, valid]
+    # residuals = obs.est[0, valid] - yobs
+    # rmse = np.sqrt(np.sum(np.ravel(residuals)**2) / obs.obs.shape[1])
+    # nse = 1.0 - np.sum(np.ravel(residuals)**2) / np.sum((np.ravel(yobs) - np.mean(np.ravel(yobs)))**2)
     # plt.plot(obs.obs[0, :], "ro")
     # plt.plot(obs.est[0, :], "b-")
     # plt.title("valid: %i, rmse=%.2f cm" % (valid.size, rmse))
@@ -1002,7 +1008,7 @@ def run_optim(config, max_iterations=200, feps=1e-3):
     # plt.loglog()
     # plt.legend()
     # plt.show()
-    print(res)
+    # print(res)
     
 
 if __name__ == "__main__":
@@ -1050,5 +1056,5 @@ if __name__ == "__main__":
 
     elif args.run_type == "optim":
 
-        # Gradient test
+        # Optim/Assimilation
         run_optim(config)
