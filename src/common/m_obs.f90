@@ -522,6 +522,9 @@ module m_obs
         real(rp), dimension(:, :), intent(in) :: weights
         
         ! Check sizes
+        if (.not. allocated(station%w)) then
+            call f90wrap_abort("Station must be initialized before setting weights")
+        end if
         if (size(weights, 2) /= size(station%obs, 2)) then
             call f90wrap_abort("shape(weights, 2) must be equal to shape(station%values, 2)")
         end if
@@ -529,9 +532,9 @@ module m_obs
             call f90wrap_abort("shape(weights, 1) must be equal to 3 (heights, widths and discharge)")
         end if
         
-        if (allocated(station%w)) deallocate(station%w)
+        ! if (allocated(station%w)) deallocate(station%w)
         
-        allocate(station%w(3, size(weights, 2)))
+        ! allocate(station%w(3, size(weights, 2)))
         ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
         if (size(weights, 1) == 2) then
             station%w(1:2, :) = weights(:, :)
@@ -541,6 +544,33 @@ module m_obs
         end if
         
     end subroutine set_station_weights
+
+    
+    subroutine set_station_variables_weights(station, weights)
+        implicit none
+        type(ObsStation), intent(inout) :: station
+        real(rp), dimension(:), intent(in) :: weights
+        
+        ! Check sizes
+        if (.not. allocated(station%w)) then
+            call f90wrap_abort("Station must be initialized before setting weights")
+        end if
+        if (size(weights, 1) < 2 .or. size(weights, 1) > 3) then
+            call f90wrap_abort("shape(weights, 1) must be equal to 3 (heights, widths and discharge)")
+        end if
+        
+        ! if (allocated(station%w)) deallocate(station%w)
+        ! allocate(station%w(3, size(station%obs, 2))
+        station%w(1, :) = weights(1)
+        station%w(2, :) = weights(2)
+        ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
+        if (size(weights, 1) == 2) then
+            station%w(3, :) = -1e+99_rp
+        else
+            station%w(3, :) = weights(3)
+        end if
+        
+    end subroutine set_station_variables_weights
     
     
     subroutine observations_initialise(obs, nstations)
