@@ -744,6 +744,8 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
                         mult = 1.0 / mdl%ic(iic)%ledge
                         qlat(1) = linear_interp(mdl%ic(iic)%ts%t, mdl%ic(iic)%ts%y, mdl%tc-mdl%dt) * mult
                         qlat(2) = linear_interp(mdl%ic(iic)%ts%t, mdl%ic(iic)%ts%y, mdl%tc) * mult
+                        qlat(1) = max(mdl%qeps, qlat(1))
+                        qlat(2) = max(mdl%qeps, qlat(1))
                         CK = CK + dx * (theta * qlat(2) + (1.0 - theta) * qlat(1))
 !                         print *, "Ck+=", dx * (theta * qlat(2) + (1.0 - theta) * qlat(1))
 !                         print *, "++", dx,  theta, qlat(2), 1.0 - theta, qlat(1)
@@ -1189,10 +1191,10 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
                 imp%ANZ(off) = 1.0_rp
                 zL = dof%h(msh%seg(iseg)%last_cs) + msh%cs(msh%seg(iseg)%last_cs)%bathy
                 imp%RHS(row) = linear_interp(mdl%bc(ibc)%ts%t, mdl%bc(ibc)%ts%y, mdl%tc) - zL
-!                 print *, "DOWNSTREAM:", zl, imp%RHS(row), row, imp%ANZ(off)
-!                 print *, "tc:", mdl%tc, msh%seg(iseg)%last_cs
-!                 print *, "ts%t:", mdl%bc(ibc)%ts%t
-!                 print *, "ts%y:", mdl%bc(ibc)%ts%y
+                ! print *, "DOWNSTREAM:", zl, imp%RHS(row), row, imp%ANZ(off)
+                ! print *, "tc:", mdl%tc, msh%seg(iseg)%last_cs
+                ! print *, "ts%t:", mdl%bc(ibc)%ts%t
+                ! print *, "ts%y:", mdl%bc(ibc)%ts%y
 !                 read(*,*)
                 off = off + 1
             else if (mdl%bc(ibc)%id == "normal_depth") then
@@ -1285,6 +1287,10 @@ subroutine preissmann_timestep(mdl, msh, imp, dof, status)
                 end if
                 imp%ANZ(off) = 1.0_rp
                 imp%ANZ(off+1) = -ddebdzL * sqrt(So)
+                ! print *, "DOWNSTREAM(normal_depth):", ddebdzL, So, row, imp%ANZ(off), imp%ANZ(off+1)
+                ! print *, "details:", dkdzL * aL * rhL**d2p3, d1p3 * (kL * rhL**d2p3) * (5.0_rp * wL - 2.0_rp * rhL * dpdzL)
+                ! print *, "(1)", dkdzL, aL, rhL
+                ! print *, "(2)", kL, rhL, wL, dpdzL
 #ifdef DEBUG_L1
                 if (isNan(imp%ANZ(off+1))) then
                     print *, "BC[normal_depth]:imp%ANZ(off+1)=,", imp%ANZ(off+1)

@@ -115,14 +115,13 @@ subroutine calc_estimations(mdl, obs)
         
             H_mean = 0.0_rp
             W_mean = 0.0_rp
-#ifndef CPP_ADJ
-            if (mdl%discharge_estimation) q_mean = 0.0_rp
-#endif
+            q_mean = 0.0_rp
             do i = 1, size(obs%stations(ista)%ics)
             
                 ics = obs%stations(ista)%ics(i)
 !                 print *, ista, i, ics
                 H_mean = H_mean + mdl%dof%h(ics) + mdl%msh%cs(ics)%bathy
+                q_mean = q_mean + mdl%dof%q(ics)
 #ifdef DEBUG_L1                
                 if (isnan(H_mean)) then
                     print *, ista, i, ics
@@ -132,10 +131,8 @@ subroutine calc_estimations(mdl, obs)
 #endif
                 call width(mdl%msh%cs(ics), mdl%dof%h(ics), w)
                 w_mean = w_mean + w
-#ifndef CPP_ADJ
-                if (mdl%discharge_estimation) q_mean = q_mean + mdl%dof%q(ics)
-#endif
-                
+                q_mean = q_mean + mdl%dof%q(ics)
+
             end do
             mult = 1.0_rp / size(obs%stations(ista)%ics)
 #ifdef DEBUG_L1                
@@ -146,11 +143,13 @@ subroutine calc_estimations(mdl, obs)
 #endif
             H_mean = H_mean * mult
             w_mean = w_mean * mult
+            q_mean = q_mean * mult
             idata = obs%stations(ista)%offset + iobs
 !             print *, "Hmean=", H_mean, obs%obs(1, idata)
 !             print *, "bathy=", mdl%msh%cs(ics)%bathy
             obs%est(1, idata) = H_mean
             obs%est(2, idata) = w_mean
+            obs%est(3, idata) = q_mean
 #ifdef DEBUG_L1                
             if (isnan(H_mean)) then
                 print *, "H_mean is nan:", ista, idata, mult
@@ -161,13 +160,6 @@ subroutine calc_estimations(mdl, obs)
                 read(*,*)
             end if
 #endif
-#ifndef CPP_ADJ
-            if (mdl%discharge_estimation) then
-                q_mean = q_mean * mult
-                obs%est(3, idata) = q_mean
-            end if
-#endif
-!             print *, ista, iobs, obs%stations(ista)%offset, idata, H_mean
             
             obs%stations(ista)%iobs = obs%stations(ista)%iobs + 1
         

@@ -122,8 +122,8 @@ module m_obs
         if (size(t) /= size(values, 2)) then
             call f90wrap_abort("shape(values, 2) must be equal to size(t)")
         end if
-        if (size(values, 1) /= 2) then
-            call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+        if (size(values, 1) < 2 .or. size(values, 1) > 3) then
+            call f90wrap_abort("shape(values, 1) must be equal to 3 (heights, widths, discharge)")
         end if
         
         allocate(station%ics(size(ics)))
@@ -131,8 +131,17 @@ module m_obs
         allocate(station%t(size(t)))
         station%t(:) = t(:)
         station%offset = -1
-        allocate(station%obs(2, size(t)))
-        station%obs(:, :) = values(:, :)
+        allocate(station%obs(3, size(t)))
+        allocate(station%w(3, size(t)))
+        station%w(:, :) = 1.0
+
+        ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
+        if (size(values, 1) == 2) then
+            station%obs(1:2, :) = values(:, :)
+            station%obs(3, :) = -1e+99_rp
+        else
+            station%obs(:, :) = values(:, :)
+        end if
         
     end subroutine obsstation_initialise
     
@@ -166,8 +175,8 @@ module m_obs
                 print *, "size(values) =", size(values, 1), size(values, 2)
                 call f90wrap_abort("shape(values, 2) must be equal to size(t)")
             end if
-            if (size(values, 1) /= 2) then
-                call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+            if (size(values, 1) < 2 .or. size(values, 1) > 3) then
+                call f90wrap_abort("shape(values, 1) must be equal to 3 (heights, widths and discharge)")
             end if
         end if
         
@@ -196,9 +205,15 @@ module m_obs
         station%t(:) = t(:)
         station%offset = -1
         if (present(values)) then
-            allocate(station%obs(2, size(t)))
-            station%obs(:, :) = values(:, :)
-            allocate(station%w(2, size(t)))
+            allocate(station%obs(3, size(t)))
+            ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
+            if (size(values, 1) == 2) then
+                station%obs(1:2, :) = values(:, :)
+                station%obs(3, :) = -1e+99_rp
+            else
+                station%obs(:, :) = values(:, :)
+            end if
+            allocate(station%w(3, size(t)))
             station%w(:, :) = 1.0
 !             print *, "setup_stations:", ics, values
         end if
@@ -228,8 +243,8 @@ module m_obs
             if (size(t) /= size(values, 2)) then
                 call f90wrap_abort("shape(values, 2) must be equal to size(t)")
             end if
-            if (size(values, 1) /= 2) then
-                call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+            if (size(values, 1) < 2 .or. size(values, 1) > 3) then
+                call f90wrap_abort("shape(values, 1) must be equal to 3 (heights, widths and discharge)")
             end if
         end if
         
@@ -262,9 +277,15 @@ module m_obs
         station%t(:) = t(:)
         station%offset = -1
         if (present(values)) then
-            allocate(station%obs(2, size(t)))
-            station%obs(:, :) = values(:, :)
-            allocate(station%w(2, size(t)))
+            allocate(station%obs(3, size(t)))
+            ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
+            if (size(values, 1) == 2) then
+                station%obs(1:2, :) = values(:, :)
+                station%obs(3, :) = -1e+99_rp
+            else
+                station%obs(:, :) = values(:, :)
+            end if
+            allocate(station%w(3, size(t)))
             station%w(:, :) = 1.0
 !             print *, "setup_stations:", ics, values
         end if
@@ -295,8 +316,8 @@ module m_obs
             if (size(t) /= size(values, 2)) then
                 call f90wrap_abort("shape(values, 2) must be equal to size(t)")
             end if
-            if (size(values, 1) /= 2) then
-                call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+            if (size(values, 1) < 2 .or. size(values, 1) > 3) then
+                call f90wrap_abort("shape(values, 1) must be equal to 3 (heights, widths and discharge)")
             end if
         end if
         
@@ -332,9 +353,15 @@ module m_obs
         station%t(:) = t(:)
         station%offset = -1
         if (present(values)) then
-            allocate(station%obs(2, size(t)))
-            station%obs(:, :) = values(:, :)
-            allocate(station%w(2, size(t)))
+            allocate(station%obs(3, size(t)))
+            ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
+            if (size(values, 1) == 2) then
+                station%obs(1:2, :) = values(:, :)
+                station%obs(3, :) = -1e+99_rp
+            else
+                station%obs(:, :) = values(:, :)
+            end if
+            allocate(station%w(3, size(t)))
             station%w(:, :) = 1.0
 !             print *, "setup_stations:", ics, values
         end if
@@ -362,8 +389,8 @@ module m_obs
                 print *, "size(values) =", size(values, 1), size(values, 2)
                 call f90wrap_abort("shape(values, 2) must be equal to size(t)")
             end if
-            if (size(values, 1) /= 2) then
-                call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+            if (size(values, 1) < 2 .or. size(values, 1) > 3) then
+                call f90wrap_abort("shape(values, 1) must be equal to 3 (heights, widths and discharge)")
             end if
         end if
         
@@ -399,9 +426,15 @@ module m_obs
         station%t(:) = t(:)
         station%offset = -1
         if (present(values)) then
-            allocate(station%obs(2, size(t)))
-            station%obs(:, :) = values(:, :)
-            allocate(station%w(2, size(t)))
+            allocate(station%obs(3, size(t)))
+            ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
+            if (size(values, 1) == 2) then
+                station%obs(1:2, :) = values(:, :)
+                station%obs(3, :) = -1e+99_rp
+            else
+                station%obs(:, :) = values(:, :)
+            end if
+            allocate(station%w(3, size(t)))
             station%w(:, :) = 1.0
 !             print *, "setup_stations:", ics, values
         end if
@@ -430,8 +463,8 @@ module m_obs
                 print *, "size(values) =", size(values, 1), size(values, 2)
                 call f90wrap_abort("shape(values, 2) must be equal to size(t)")
             end if
-            if (size(values, 1) /= 2) then
-                call f90wrap_abort("shape(values, 1) must be equal to 2 (heights and widths)")
+            if (size(values, 1) < 2 .or. size(values, 1) > 3) then
+                call f90wrap_abort("shape(values, 1) must be equal to 3 (heights, widths and discharge)")
             end if
         end if
         
@@ -467,9 +500,15 @@ module m_obs
         station%t(:) = t(:)
         station%offset = -1
         if (present(values)) then
-            allocate(station%obs(2, size(t)))
-            station%obs(:, :) = values(:, :)
-            allocate(station%w(2, size(t)))
+            allocate(station%obs(3, size(t)))
+            ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
+            if (size(values, 1) == 2) then
+                station%obs(1:2, :) = values(:, :)
+                station%obs(3, :) = -1e+99_rp
+            else
+                station%obs(:, :) = values(:, :)
+            end if
+            allocate(station%w(3, size(t)))
             station%w(:, :) = 1.0
 !             print *, "setup_stations:", ics, values
         end if
@@ -483,17 +522,23 @@ module m_obs
         real(rp), dimension(:, :), intent(in) :: weights
         
         ! Check sizes
-        if (size(weights, 1) /= size(station%obs, 1)) then
-            call f90wrap_abort("shape(weights, 1) must be equal to shape(station%values, 1)")
-        end if
         if (size(weights, 2) /= size(station%obs, 2)) then
             call f90wrap_abort("shape(weights, 2) must be equal to shape(station%values, 2)")
+        end if
+        if (size(weights, 1) < 2 .or. size(weights, 1) > 3) then
+            call f90wrap_abort("shape(weights, 1) must be equal to 3 (heights, widths and discharge)")
         end if
         
         if (allocated(station%w)) deallocate(station%w)
         
-        allocate(station%w(size(weights, 1), size(weights, 2)))
-        station%w(:, :) = weights(:, :)
+        allocate(station%w(3, size(weights, 2)))
+        ! RETRO-COMPATIBILITY (initialy number of vars was 2: heights and widths)
+        if (size(weights, 1) == 2) then
+            station%w(1:2, :) = weights(:, :)
+            station%w(3, :) = -1e+99_rp
+        else
+            station%w(:, :) = weights(:, :)
+        end if
         
     end subroutine set_station_weights
     
@@ -528,9 +573,9 @@ module m_obs
         if (allocated(obs%obs)) deallocate(obs%obs)
         if (allocated(obs%est)) deallocate(obs%est)
         if (allocated(obs%w)) deallocate(obs%w)
-        allocate(obs%obs(2, ndata))
-        allocate(obs%est(2, ndata))
-        allocate(obs%w(2, ndata))
+        allocate(obs%obs(3, ndata))
+        allocate(obs%est(3, ndata))
+        allocate(obs%w(3, ndata))
         obs%obs(:, :) = -1e+99_rp
         obs%est(:, :) = -1e+99_rp
         obs%w(:, :) = 1.0_rp
@@ -538,14 +583,17 @@ module m_obs
     end subroutine setup_observations_data
     
     
-    subroutine all_observed(t, msh, obs)
+    subroutine all_observed(t, msh, flags, obs)
         implicit none
         type(Mesh), intent(in) :: msh
         real(rp), dimension(:), intent(in) :: t
+        integer(ip), dimension(:), optional :: flags
         type(Observations), intent(out) :: obs
         
         ! Index of cross-section
         integer(ip) :: ics
+        ! Index of flag
+        integer(ip) :: iflag
         ! Index of segment
         integer(ip) :: iseg
         ! Index of station
@@ -597,20 +645,30 @@ module m_obs
         
         ! Initialise observations and estimations arrays
         ndata = nsta * size(t)
-        allocate(obs%obs(2, ndata))
-        allocate(obs%est(2, ndata))
-        allocate(obs%w(2, ndata))
+        allocate(obs%obs(3, ndata))
+        allocate(obs%est(3, ndata))
+        allocate(obs%w(3, ndata))
         obs%obs(:, :) = -1e+99_rp
         obs%est(:, :) = -1e+99_rp
         obs%w(:, :) = 1.0_rp
+
+        if (present(flags)) then
+            if (size(flags, 1) /= 3) then
+                call f90wrap_abort("size(flags) must be equal to 3 (height, width and discharge)")
+            end if
+            do iflag = 1, 3
+                if (flags(iflag) == 0) then
+                    obs%w(iflag, :) = -1e+99_rp
+                end if
+            end do
+        end if
         
     end subroutine all_observed
     
     
-    subroutine data_from_stations(obs, discharge_estimation)
+    subroutine data_from_stations(obs)
         implicit none
         type(Observations), intent(inout) :: obs
-        logical, intent(in), optional :: discharge_estimation
         
         logical :: use_weights
         ! Index of data
@@ -648,21 +706,11 @@ module m_obs
         if (allocated(obs%w)) deallocate(obs%w)
         if (allocated(obs%est)) deallocate(obs%est)
         
-        allocate(obs%obs(2, ndata))
-        allocate(obs%w(2, ndata))
-        if (present(discharge_estimation)) then
-            if (discharge_estimation) then
-                allocate(obs%est(3, ndata))
-            else
-                allocate(obs%est(2, ndata))
-            end if
-        else
-            allocate(obs%est(2, ndata))
-        end if
-!         allocate(obs%est(2, ndata))
+        allocate(obs%obs(3, ndata))
+        allocate(obs%est(3, ndata))
+        allocate(obs%w(3, ndata))
         idata = 0
         do ista = 1, size(obs%stations)
-!             print *, "STATION=", ista
             ndata = size(obs%stations(ista)%obs, 2)
             if (allocated(obs%stations(ista)%obs)) then
                 obs%obs(:, idata+1:idata+ndata) = obs%stations(ista)%obs(:, :)
@@ -956,5 +1004,55 @@ module m_obs
 #endif
 
     end function cost_R2_heights
+    
+    
+    function cost_R2_multi(est, obs, w) result(cost)
+#ifndef CPP_ADJ
+        use m_common, only: disable_warnings
+#endif
+        implicit none
+        real(rp), dimension(:, :), intent(in) :: est
+        real(rp), dimension(:, :), intent(in) :: obs
+        real(rp), dimension(:, :), intent(in) :: w
+        real(rp) :: cost
+        
+        ! Index of observation
+        integer(ip) :: iobs
+        integer(ip) :: ivar
+#ifndef CPP_ADJ
+        ! Number of observations skipped (no estimation)
+        integer(ip) :: skipped
+        ! Temporary strings
+        character(len=32), dimension(2) :: tmp
+#endif
+        
+        cost = 0.0
+#ifndef CPP_ADJ
+        skipped = 0
+#endif
+        do iobs = 1, size(obs, 2)
+            do ivar = 1, 3
+                if (obs(ivar, iobs) > -999.0 .and. w(ivar, iobs) > -999.0) then
+                    if (est(ivar, iobs) > -999.0) then
+                        cost = cost + (w(ivar, iobs) * (est(ivar, iobs) - obs(ivar, iobs)))**2
+#ifndef CPP_ADJ
+                    else
+                        skipped = skipped + 1
+#endif
+                    end if
+                end if
+            end do
+        end do
+#ifndef CPP_ADJ
+!         cost = sqrt(cost**2)
+        if (skipped > 0 .and. (.not. disable_warnings)) then
+            write(tmp(1), '(I32)') skipped
+            write(tmp(2), '(F32.2)') skipped * 100.0 / (size(obs, 1) * size(obs, 2))
+            print '(5A)', "[ WARNING ] ", trim(adjustl(tmp(1))), " (" , trim(adjustl(tmp(2))), &
+                          " %) observations skipped (no estimation)"
+        end if
+#endif
+
+    end function cost_R2_multi
 
 end module m_obs

@@ -74,18 +74,18 @@ subroutine generate_observations(mdl, obs)
         if (.not.allocated(obs%stations)) then
             call abort_solver("No observations defined")
         end if
-        call data_from_stations(obs, mdl%discharge_estimation)
+        call data_from_stations(obs)
         
-    else 
+    ! else 
     
-        ! Reallocate obs%est if it has only 2 rows and discharge estimation is enabled
-        if (mdl%discharge_estimation) then
-            if (size(obs%est, 1) == 2) then
-                deallocate(obs%est)
-                allocate(obs%est(3, size(obs%obs, 2)))
-                obs%est(:, :) = -1e+99_rp
-            end if
-        end if
+    !     ! Reallocate obs%est if it has only 2 rows and discharge estimation is enabled
+    !     if (mdl%discharge_estimation) then
+    !         if (size(obs%est, 1) == 2) then
+    !             deallocate(obs%est)
+    !             allocate(obs%est(3, size(obs%obs, 2)))
+    !             obs%est(:, :) = -1e+99_rp
+    !         end if
+    !     end if
         
     end if
     

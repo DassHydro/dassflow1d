@@ -122,7 +122,7 @@ subroutine calc_cost_and_gradients(cost, grad, mdl, ctrl, obs)
         if (.not.allocated(obs%stations)) then
             call abort_solver("No observations defined")
         end if
-        call data_from_stations(obs, mdl%discharge_estimation)
+        call data_from_stations(obs)
     end if
     
     ! Initialise back variables

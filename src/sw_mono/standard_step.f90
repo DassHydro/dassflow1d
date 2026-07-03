@@ -344,6 +344,7 @@ subroutine standard_step(mdl, eps, itermax)
 #ifndef CPP_ADJ
             ! Check for NaN value(s)
             if (isnan(mdl%dof%h(ics)) .or. isnan(mdl%dof%A(ics))) then 
+                print *, "iseg=", iseg, ", ics=", ics
                 print *, "h=", mdl%dof%h(ics)
                 print *, "h=", mdl%dof%A(ics)
                 mdl%status = 10

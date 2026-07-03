@@ -185,8 +185,6 @@ module m_sw_mono
 
         !> Flag to enable multiple steady states rather than unsteady
         logical :: steady_states
-        !> Flag to enable discharge in estimations
-        logical :: discharge_estimation
         !> True if initialisation is done externally
         logical :: external_initialisation
         !> True to write observations status
@@ -796,7 +794,6 @@ module m_sw_mono
         
         ! Set default values
         mdl%steady_states = .false.
-        mdl%discharge_estimation = .false.
         mdl%external_initialisation = .false.
         mdl%print_progress = .true.
         mdl%output_resampled_cs = .false.
@@ -901,6 +898,113 @@ module m_sw_mono
             end if
         end if
         
+        
+        ! Resize array of inflow conditions
+        if (allocated(mdl%ic)) then
+            size_old = size(mdl%ic)
+            allocate(old_ic(size(mdl%ic)))
+            do i = 1, size(mdl%ic)
+                call move_inflow_condition(mdl%ic(i), old_ic(i))
+!                 old_ic(i)%iseg = mdl%ic(i)%iseg
+!                 old_ic(i)%ie = mdl%ic(i)%ie
+!                 old_ic(i)%ledge= mdl%ic(i)%ledge
+!                 allocate(old_ic(i)%ts%t(size(mdl%ic(i)%ts%t)))
+!                 old_ic(i)%ts%t(:) = mdl%ic(i)%ts%t(:)
+!                 allocate(old_ic(i)%ts%y(size(mdl%ic(i)%ts%y)))
+!                 old_ic(i)%ts%y(:) = mdl%ic(i)%ts%y(:)
+!                 deallocate(mdl%ic(i)%ts%t)
+!                 deallocate(mdl%ic(i)%ts%y)
+            end do
+            deallocate(mdl%ic)
+        else
+            size_old = 0
+        end if
+        allocate(mdl%ic(size_old+1))
+        if (size_old > 0) then
+            do i = 1, size_old
+                call move_inflow_condition(old_ic(i), mdl%ic(i))
+!                 mdl%ic(i)%iseg = old_ic(i)%iseg
+!                 mdl%ic(i)%ie = old_ic(i)%ie
+!                 mdl%ic(i)%ledge = old_ic(i)%ledge
+!                 allocate(mdl%ic(i)%ts%t(size(old_ic(i)%ts%t)))
+!                 mdl%ic(i)%ts%t(:) = old_ic(i)%ts%t(:)
+!                 allocate(mdl%ic(i)%ts%y(size(old_ic(i)%ts%t)))
+!                 mdl%ic(i)%ts%y(:) = old_ic(i)%ts%y(:)
+!                 deallocate(old_ic(i)%ts%t)
+!                 deallocate(old_ic(i)%ts%y)
+            end do
+            deallocate(old_ic)
+        end if
+        
+        ! Set new inflow condition
+        mdl%ic(size_old+1)%iseg = iseg + 1
+        mdl%ic(size_old+1)%ie = ie
+        mdl%ic(size_old+1)%ledge = mdl%msh%cs(ie)%deltademi
+        allocate(mdl%ic(size_old+1)%ts%t(size(t)))
+        mdl%ic(size_old+1)%ts%t(:) = t(:)
+        allocate(mdl%ic(size_old+1)%ts%y(size(q)))
+        mdl%ic(size_old+1)%ts%y(:) = q(:)
+        
+        mdl%nic = size(mdl%ic)
+        
+    end subroutine
+
+    subroutine add_inflow_condition_using_ibase(mdl, iseg, ibase, t, q)
+        implicit none
+        type(Model) :: mdl
+        integer(ip) :: iseg
+        integer(ip) :: ibase
+        real(rp), dimension(:) :: t
+        real(rp), dimension(:) :: q
+        
+        ! Iterator
+        integer(ip) :: i
+        ! Index of cross-section
+        integer(ip) :: ics
+        ! Index of edge
+        integer(ip) :: ie
+        ! Index of inflow condition
+        integer(ip) :: iic
+        ! Number of inflow conditions before adding new inflow condition
+        integer(ip) :: size_old
+        ! Squares of distances
+        real(rp), dimension(2) :: dist2
+        ! Minimum square of distance
+        real(rp) :: dist2min
+        ! Temporary arry for copying existing inflow conditions
+        type(InflowCondition), dimension(:), allocatable :: old_ic
+        
+        ! CHECK-UP
+        if (iseg < 0 .or. iseg > size(mdl%msh%seg)) then
+            call f90wrap_abort("index of segment out of bounds")
+        end if
+        if (size(t) /= size(q)) then
+            call f90wrap_abort("t and q must be of same size")
+        end if
+
+        ! Locate closest cross-section
+        ie = 0
+        do ics = mdl%msh%seg(iseg+1)%first_cs, mdl%msh%seg(iseg+1)%last_cs-1
+            print *, iseg, ics, mdl%msh%cs(ics)%ibase, ibase+1
+            if (mdl%msh%cs(ics)%ibase == ibase+1) then
+                ie = ics
+                exit
+            end if
+        end do
+        if (ie == 0) then
+            call f90wrap_abort("inflow condition not found with provided ibase")
+        end if
+        
+        ! Check that inflow conditions are set in order (increasing iseg, ics)
+        if (allocated(mdl%ic) .and. mdl%nic > 0) then
+            size_old = size(mdl%ic)
+            if (iseg+1 < mdl%ic(size_old)%iseg) then
+                call f90wrap_abort("inflow conditions must be added with increasing indices of segments")
+            end if
+            if (iseg+1 == mdl%ic(size_old)%iseg .and. ie < mdl%ic(size_old)%ie) then
+                call f90wrap_abort("inflow conditions must be added with increasing indices of edges in a segment")
+            end if
+        end if
         
         ! Resize array of inflow conditions
         if (allocated(mdl%ic)) then

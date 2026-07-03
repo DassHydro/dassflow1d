@@ -65,8 +65,9 @@ subroutine calc_cost(cost, mdl, ctrl, obs)
     use m_sw_mono, only: Unknowns
     use m_numeric
     use m_obs, only: Observations
-!     use m_obs, only: cost_L2_heights
-    use m_obs, only: cost_R2_heights
+    ! use m_obs, only: cost_L2_heights
+    ! use m_obs, only: cost_R2_heights
+    use m_obs, only: cost_R2_multi
 #ifndef CPP_ADJ
     use m_obs, only: data_from_stations
     use m_obs, only: write_observations_status
@@ -131,7 +132,7 @@ subroutine calc_cost(cost, mdl, ctrl, obs)
         if (.not.allocated(obs%stations)) then
             call abort_solver("No observations defined")
         end if
-        call data_from_stations(obs, mdl%discharge_estimation)
+        call data_from_stations(obs)
     end if
     
 #endif
@@ -168,8 +169,9 @@ subroutine calc_cost(cost, mdl, ctrl, obs)
         call abort_solver("Observations weights not set")
     end if
 #endif
-!     cost = cost_L2_heights(obs%est(1, :), obs%obs(1, :))
-    cost = cost_R2_heights(obs%est(1, :), obs%obs(1, :), obs%w(1, :))
+    ! cost = cost_L2_heights(obs%est(1, :), obs%obs(1, :))
+    ! cost = cost_R2_heights(obs%est(1, :), obs%obs(1, :), obs%w(1, :))
+    cost = cost_R2_multi(obs%est, obs%obs, obs%w)
     
 #ifndef CPP_ADJ
     if (mdl%observations_status) then

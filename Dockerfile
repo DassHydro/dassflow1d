@@ -58,7 +58,7 @@ WORKDIR /mnt/rundir
 ENV PYTHONPATH /app/DassFlow1D_AQ/build/api
 
 # Entry point
-LABEL version="2.1"
-LABEL description="DassFlow-1D v2.1"
+LABEL version="2.3"
+LABEL description="DassFlow-1D v2.3"
 LABEL maintainer="Kevin Larnier (kevin.larnier@hydro-matters.fr)"
 ENTRYPOINT  ["python3", "/app/DassFlow1D_AQ/bin/dassflow1d_cli.py" ]
