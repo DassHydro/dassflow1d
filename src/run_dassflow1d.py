@@ -846,9 +846,17 @@ def load_observations(config, model):
                     # print(time, np.any(np.isnan(time)), time.mask)
                     # choice = input()
                     node_wse = swot_data.groups["node"]["wse"][sorted_indices, :]
-                    # node_wse[time.masj] = -1e+99
                     node_wse[np.isnan(node_wse)] = -1e+99
+
                     for i in range(0, node_wse.shape[0]):
+
+                        # Filter roughly
+                        node_wse
+                        node_wse_mean = np.mean(node_wse)
+                        # print("[0]", node_wse)
+                        node_wse[np.abs((node_wse - node_wse_mean) > 10.0)] = np.nan
+                        # print("[1]", node_wse)
+
                         delta_seconds = (np.datetime64(date_start) - np.datetime64("2000-01-01")) / np.timedelta64(1, "s")
                         # time_node = np.array([np.datetime64("2000-01-01") + np.timedelta64(int(dt), "s") for dt in time[i, :]])
                         # tobs = (time_node - np.datetime64(date_start)) / np.timedelta64(1, "s")
@@ -874,9 +882,9 @@ def load_observations(config, model):
                         else:
                             tobs = tobs[valid]
                             HWobs = np.ones((2, np.sum(valid))) * -1e+99
-                            if np.max(node_wse[i, valid]) < 0.0:
-                                plt.plot(time_node[valid], node_wse[i, valid], "b.")
-                                plt.show()
+                            # if np.max(node_wse[i, valid]) < 0.0:
+                            #     plt.plot(time_node[valid], node_wse[i, valid], "b.")
+                            #     plt.show()
                             HWobs[0, :] = node_wse[i, valid]
                         candidates = xs_nodes[xs_nodes["node_id"] == available_node_id[i]]
                         if candidates.index.size == 1:
@@ -893,7 +901,8 @@ def load_observations(config, model):
                         # choice = input()
                         HWobs = HWobs[:, np.logical_and(tobs >= assim_start_t, tobs <= model.te)]
                         tobs = tobs[np.logical_and(tobs >= assim_start_t, tobs <= model.te)]
-                        obs_count += tobs.size
+                        valid_obs = np.sum(HWobs.flatten() > -9999.0)
+                        obs_count += valid_obs
 
                         obs.stations[ista].setup(model.msh, tobs, HWobs, indices=xs_index)
                         obs.stations[ista]._name = str(available_node_id[i])
@@ -1286,11 +1295,15 @@ def write_netcdf_results(model, config):
     dt = (dates - np.datetime64("2000-01-01 00:00:00")) / np.timedelta64(1, "s")
     Qout = model.res.q[indices, :].T
     for ix in range(0, nx):
-        Qmean = np.mean(Qout[:, ix])
-        valid = Qout[:, ix]/Qmean <= 5.0
-        unvalid = Qout[:, ix]/Qmean > 5.0
-        if np.sum(valid) > 0:
-            Qout[unvalid, ix] = np.interp(dt[unvalid], dt[valid], Qout[valid, ix])
+        for it in range(0, nt):
+            Qwindow = Qout[max(0, it-5):it+5, ix]
+            Qmean = np.mean(Qwindow)
+            if Qout[it, ix] > 5.0 * Qmean:
+                Qout[it, ix] = Qmean
+            # valid = Qout[:, ix]/Qmean <= 5.0
+            # unvalid = Qout[:, ix]/Qmean > 5.0
+            # if np.sum(valid) > 0:
+            #     Qout[unvalid, ix] = np.interp(dt[unvalid], dt[valid], Qout[valid, ix])
 
     # Create netCDF output file
     logger.info("- Create NetCDF output file: %s" % model.output_nc_file)
