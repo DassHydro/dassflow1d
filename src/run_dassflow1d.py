@@ -1627,7 +1627,7 @@ def run_gradient_test(config, iterations=34, delta=1e-3):
     
 class MinimizeCallback:
 
-    def __init__(self, config, model, control=None, obs=None, output_file):
+    def __init__(self, config, model, control=None, obs=None, output_file=None):
         self.config = config
         self.model = model
         self.control = control
