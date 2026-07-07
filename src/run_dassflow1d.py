@@ -1627,7 +1627,7 @@ def run_gradient_test(config, iterations=34, delta=1e-3):
     
 class MinimizeCallback:
 
-    def __init__(self, config, model, control=None, obs=None):
+    def __init__(self, config, model, control=None, obs=None, output_file):
         self.config = config
         self.model = model
         self.control = control
@@ -1641,6 +1641,7 @@ class MinimizeCallback:
             "ctrl-x0": x_prior}
         self.iteration = 0
         self._plot_obs = False
+        self._output_file = output_file
 
     def __call__(self, x):
         self.iteration += 1
@@ -1654,17 +1655,18 @@ class MinimizeCallback:
         self.data["ctrl-x"] = np.concatenate((self.data["ctrl-x"], x_iter.reshape((1,-1))))
 
         # Save optimization results
-        out_file = None
-        if "assimilation" in self.config:
-            assimilation_config = self.config["assimilation"]
-            if "output-file" in assimilation_config:
-                out_file = assimilation_config["output-file"]
-        elif "optim" in self.config:
-            optim_config = self.config["optim"]
-            if "output-file" in optim_config:
-                out_file = optim_config["output-file"]
-        if out_file is not None:
-            out = nc.Dataset(out_file, "w")
+        # out_file = None
+        # if "assimilation" in self.config:
+        #     assimilation_config = self.config["assimilation"]
+        #     if "output-file" in assimilation_config:
+        #         out_file = assimilation_config["output-file"]
+        # elif "optim" in self.config:
+        #     optim_config = self.config["optim"]
+        #     if "output-file" in optim_config:
+        #         out_file = optim_config["output-file"]
+        # if out_file is not None:
+        if self._output_file is not None:
+            out = nc.Dataset(self._output_file, "w")
             out.createDimension("nchars", 6)
             out.createDimension("nitems", len(self.control.items))
             out.createDimension("nx", self.control.x.size)
@@ -1798,11 +1800,34 @@ def run_optim(config, max_iterations=200, feps=1e-3):
   
     # Load observations
     obs = load_observations(config, model)
+    if len(obs.stations) == 0:
+        raise RuntimeError("No observations stations")
   
     # Setup control
+    if "control" not in config:
+        raise RuntimeError("Section 'control' not found in config")
+    if len(config["control"]) == 0:
+        raise RuntimeError("No control items in config")
     control = load_control(config, model)
+
+    # Delete existing output files
+    # TODO implement restart
+    optim_output_file = get_from_config(config, section="assimilation", 
+                                  key="output-file", required=False, 
+                                  value_type=str,
+                                  deprecated_keys=["output_file"])
+    if optim_output_file is not None:
+        if os.path.isfile(optim_output_file):
+            os.remove(optim_output_file)
+    output_file = get_from_config(config, section="model", 
+                                  key="output-file", required=False, 
+                                  value_type=str,
+                                  deprecated_keys=["output_file"])
+    if output_file is not None:
+        if os.path.isfile(output_file):
+            os.remove(output_file)
     
-    # Run gradient test 
+    # Run optimisation
     logger.info("=" * 80)
     logger.info(" OPTIMISATION")
     logger.info("=" * 80)
@@ -1848,7 +1873,7 @@ def run_optim(config, max_iterations=200, feps=1e-3):
 
     #     logger.info("Iteration, cost= %12.5e, [proj g]= %12.5e" % (model.__last_cost__, np.linalg.norm(model.__last_grad__)))
 
-    callback_minimize = MinimizeCallback(config, model, control=control, obs=obs)
+    callback_minimize = MinimizeCallback(config, model, control=control, obs=obs, output_file=optim_output_file)
 
     res = scipy.optimize.minimize(dassflow1d.calc_cost_and_gradients_scipy_minimize, control.x, 
                                   args=(model, control, obs), jac=True, tol = 1e-7, 
